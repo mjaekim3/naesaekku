@@ -1,0 +1,11 @@
+node_modules/
+.npm-cache/
+.electron-cache/
+.builder-cache/
+.runtime/
+dist/
+test-results/
+.env
+.env.*
+!.env.example
+*.log

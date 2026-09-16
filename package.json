@@ -1,0 +1,48 @@
+{
+  "name": "touch-desktop-pet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Touch is still wandering somewhere.",
+  "author": "Touch's friends",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-isolation=none tests/motion.test.js",
+    "test:electron": "node scripts/smoke.cjs",
+    "dist": "node scripts/check-asset.cjs && node scripts/make-icon.cjs && electron-builder --win portable --x64 --publish never"
+  },
+  "build": {
+    "appId": "local.touch.rainbowbridge",
+    "productName": "Somewhere, Over the Rainbow Bridge",
+    "executableName": "Touch",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "src/**",
+      "assets/touch.png",
+      "assets/icon.ico",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Touch.exe"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "44.4.1",
+    "electron-builder": "26.15.3",
+    "playwright": "1.63.0",
+    "png-to-ico": "3.0.2",
+    "pngjs": "7.0.0"
+  }
+}
