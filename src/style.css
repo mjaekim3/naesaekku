@@ -4,14 +4,5 @@ body { display: flex; justify-content: center; align-items: flex-end; padding-bo
 #pet { display: flex; align-items: flex-end; cursor: grab; outline: none; touch-action: none; }
 #pet.dragging { cursor: grabbing; }
 #bounce { transform-origin: center bottom; }
-#pet.walking #bounce { animation: walk 520ms ease-in-out infinite; }
 #touch { display: block; max-width: 216px; max-height: 192px; width: auto; height: auto; pointer-events: none; }
 #pet.left #touch { transform: scaleX(-1); }
-@keyframes walk {
-  0%, 100% { transform: translateY(0) rotate(-0.7deg); }
-  25%, 75% { transform: translateY(-3px) rotate(0); }
-  50% { transform: translateY(0) rotate(0.7deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #pet.walking #bounce { animation: none; }
-}
