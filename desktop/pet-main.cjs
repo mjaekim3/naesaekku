@@ -184,7 +184,8 @@ else {
   app
     .whenReady()
     .then(async () => {
-      const { PetModel, hitAlpha, FRAME_COUNT } = await import("../core/pet.mjs");
+      const { PetModel, hitAlpha, FRAME_COUNT } =
+        await import("../core/pet.mjs");
       await fs.mkdir(dir, { recursive: true });
       let saved = {};
       try {
@@ -372,7 +373,8 @@ else {
       const smokeStates = new Set();
       let probing = false;
       ipcMain.on("pet:painted", async (e, data) => {
-        if (!trusted(e) || !smoke || data?.frames !== FRAME_COUNT || !ready) return;
+        if (!trusted(e) || !smoke || data?.frames !== FRAME_COUNT || !ready)
+          return;
         smokeStates.add(data.state);
         if (probing) return;
         probing = true;

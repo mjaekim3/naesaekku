@@ -1,5 +1,12 @@
 # Verification — 2026-09-18
 
+## v0.2.1 motion fixes
+
+- Reproduced three failures: petting alternated misaligned poses, small pointer jitter moved the window, and the walking cycle lacked eight phases. All three regression tests now pass.
+- 26 tests passed; core/gateway statements 95.50%, branches 89.49%.
+- Walking uses eight new generated frames registered by head/chest at a common scale. Petting holds the seated closed-eye frame and a fixed heart position.
+- Pointer-down preserves the existing pose and facing; movement under 6 DIP does not reposition the window.
+
 ## v0.2 desktop companion
 
 - 23 tests passed. Core/gateway statements 95.37%, branches 89.13%; pet model statements 100%, branches 98.38%.

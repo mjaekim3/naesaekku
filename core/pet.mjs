@@ -76,8 +76,13 @@ export class PetModel {
   }
   dragTo(cursor) {
     if (this.state !== "drag") return;
-    const x = cursor.x - this.offset.x, y = cursor.y - this.offset.y;
-    if (!this.dragMoved && Math.hypot(x-this.dragOrigin.x,y-this.dragOrigin.y)<6) return;
+    const x = cursor.x - this.offset.x,
+      y = cursor.y - this.offset.y;
+    if (
+      !this.dragMoved &&
+      Math.hypot(x - this.dragOrigin.x, y - this.dragOrigin.y) < 6
+    )
+      return;
     this.dragMoved = true;
     this.x = x;
     this.y = y;
@@ -109,7 +114,7 @@ export class PetModel {
   }
   frame() {
     if (this.state === "drag") return this.dragView.frame;
-    if (this.state === "walk") return 12 + Math.floor(this.elapsed / 100) % 8;
+    if (this.state === "walk") return 12 + (Math.floor(this.elapsed / 100) % 8);
     if (this.state === "sleep")
       return 6 + (Math.floor(this.elapsed / 1200) % 2);
     if (this.state === "eat") return 8 + (Math.floor(this.elapsed / 300) % 2);
@@ -120,7 +125,10 @@ export class PetModel {
     return {
       state: this.state,
       frame: this.frame(),
-      mirrored: this.state === "drag" ? this.dragView.mirrored : this.state === "walk" && this.direction < 0,
+      mirrored:
+        this.state === "drag"
+          ? this.dragView.mirrored
+          : this.state === "walk" && this.direction < 0,
       roaming: this.roaming,
     };
   }
