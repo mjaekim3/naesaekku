@@ -9,22 +9,22 @@ const UNET = "flux-2-klein-4b-fp8.safetensors";
 const CLIP = "qwen_3_4b_fp4_flux2.safetensors";
 const VAE = "flux2-vae.safetensors";
 const POSES = [
-  'strict right-facing side profile walking: left front paw forward, right rear paw forward, other two paws back',
-  'strict right-facing side profile walking: left front paw lowering, right rear paw pushing back',
-  'strict right-facing side profile walking: all paws passing beneath the body, left front paw planted',
-  'strict right-facing side profile walking: right front paw lifting forward, left rear paw swinging forward',
-  'strict right-facing side profile walking: right front paw fully forward, left rear paw forward, other two paws back',
-  'strict right-facing side profile walking: right front paw lowering, left rear paw pushing back',
-  'strict right-facing side profile walking: paws passing beneath body, right front paw planted',
-  'strict right-facing side profile walking: left front paw lifting forward, right rear paw swinging forward',
-  'sitting front view, both eyes open, small pink tongue smiling',
-  'sitting in the EXACT same front pose as the reference, both eyes gently closed in a happy blink, small pink tongue smiling',
-  'lying curled up asleep, both eyes closed, head resting on front paws',
-  'lying curled up asleep, both eyes closed, head resting on front paws, chest raised very slightly while breathing',
-  'sitting three-quarter right view eating from a small bowl, head lowered towards bowl',
-  'sitting in the same three-quarter right position beside a small bowl, head slightly raised licking lips',
-  'sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning left',
-  'sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning right',
+  "strict right-facing side profile walking: left front paw forward, right rear paw forward, other two paws back",
+  "strict right-facing side profile walking: left front paw lowering, right rear paw pushing back",
+  "strict right-facing side profile walking: all paws passing beneath the body, left front paw planted",
+  "strict right-facing side profile walking: right front paw lifting forward, left rear paw swinging forward",
+  "strict right-facing side profile walking: right front paw fully forward, left rear paw forward, other two paws back",
+  "strict right-facing side profile walking: right front paw lowering, left rear paw pushing back",
+  "strict right-facing side profile walking: paws passing beneath body, right front paw planted",
+  "strict right-facing side profile walking: left front paw lifting forward, right rear paw swinging forward",
+  "sitting front view, both eyes open, small pink tongue smiling",
+  "sitting in the EXACT same front pose as the reference, both eyes gently closed in a happy blink, small pink tongue smiling",
+  "lying curled up asleep, both eyes closed, head resting on front paws",
+  "lying curled up asleep, both eyes closed, head resting on front paws, chest raised very slightly while breathing",
+  "sitting three-quarter right view eating from a small bowl, head lowered towards bowl",
+  "sitting in the same three-quarter right position beside a small bowl, head slightly raised licking lips",
+  "sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning left",
+  "sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning right",
 ];
 
 // Native ComfyUI nodes, based on the official Flux.2 Klein distilled edit workflow.
@@ -142,7 +142,8 @@ export class LocalAI {
         if (bytes.length > 20 * 1024 * 1024) throw Error("Image too large");
         return bytes;
       }
-      return await response.json();
+      const bodyText = await response.text();
+      return bodyText ? JSON.parse(bodyText) : {};
     } catch (error) {
       if (signal?.aborted) throw signal.reason;
       throw Error(
@@ -185,9 +186,11 @@ export class LocalAI {
     };
   }
   async release() {
-    const queue = await this.request(COMFY, '/queue');
+    const queue = await this.request(COMFY, "/queue");
     if (queue.queue_running?.length === 0 && queue.queue_pending?.length === 0)
-      await this.request(COMFY, '/free', {body:{unload_models:true,free_memory:true}});
+      await this.request(COMFY, "/free", {
+        body: { unload_models: true, free_memory: true },
+      });
   }
   async analyze(images, features, signal) {
     const result = await this.request(OLLAMA, "/api/chat", {
@@ -217,7 +220,13 @@ export class LocalAI {
       throw Error("사진 분석 결과가 비어 있어요. 다른 사진으로 시도해주세요.");
     return description.slice(0, 2000);
   }
-  async render({ images, prompt, signal, motion = false, onProgress = () => {} }) {
+  async render({
+    images,
+    prompt,
+    signal,
+    motion = false,
+    onProgress = () => {},
+  }) {
     // One image contains the references so the model can see more than the first photo.
     const tiles = await Promise.all(
       images
@@ -266,26 +275,53 @@ export class LocalAI {
       const frames = [];
       for (let i = 0; i < POSES.length; i++) {
         signal?.throwIfAborted();
-        const posePrompt = 'Draw exactly ONE full-body sprite of the SAME pet character in the reference. Preserve its exact forehead markings, coat, face, ears, palette and character design. '+POSES[i]+'. Keep the entire animal centered with 15 percent clear padding. Same camera scale in every pose. Only one animal. No sheet, no panels, no labels.';
+        const posePrompt =
+          "Draw exactly ONE full-body sprite of the SAME pet character in the reference. Preserve its exact forehead markings, coat, face, ears, palette and character design. " +
+          POSES[i] +
+          ". Keep the entire animal centered with 15 percent clear padding. Same camera scale in every pose. Only one animal. No sheet, no panels, no labels.";
         const frame = await this.generate(image, posePrompt, signal, 314159);
-        frames.push({input:await sharp(frame.buffer).resize(216,216,{fit:'contain',background:'#00000000',kernel:'nearest'}).png().toBuffer(),left:(i%4)*256+20,top:Math.floor(i/4)*256+20});
+        frames.push({
+          input: await sharp(frame.buffer)
+            .resize(216, 216, {
+              fit: "contain",
+              background: "#00000000",
+              kernel: "nearest",
+            })
+            .png()
+            .toBuffer(),
+          left: (i % 4) * 256 + 20,
+          top: Math.floor(i / 4) * 256 + 20,
+        });
         onProgress(i + 1);
       }
-      return {buffer:await sharp({create:{width:1024,height:1024,channels:4,background:'#00000000'}}).composite(frames).png().toBuffer()};
+      return {
+        buffer: await sharp({
+          create: {
+            width: 1024,
+            height: 1024,
+            channels: 4,
+            background: "#00000000",
+          },
+        })
+          .composite(frames)
+          .png()
+          .toBuffer(),
+      };
     }
     return this.generate(image, prompt, signal);
   }
-  async generate(image, prompt, signal, seed = Math.floor(Math.random() * 2 ** 32)) {
+  async generate(
+    image,
+    prompt,
+    signal,
+    seed = Math.floor(Math.random() * 2 ** 32),
+  ) {
     const localPrompt =
       prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") +
       "\nThe whole background must be flat pure magenta #FF00FF, with NO shadows, ground, grid lines or text. No magenta on the animal. Preserve the animal identity in the reference. Crisp pixel-art sprite design, no photorealism.";
     const queued = await this.request(COMFY, "/prompt", {
       body: {
-        prompt: fluxWorkflow(
-          image,
-          localPrompt,
-          seed,
-        ),
+        prompt: fluxWorkflow(image, localPrompt, seed),
         client_id: randomUUID(),
       },
       signal,
