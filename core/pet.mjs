@@ -1,5 +1,6 @@
 export const PET_WIDTH = 220;
 export const PET_HEIGHT = 230;
+export const FRAME_COUNT = 20;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, Math.max(lo, hi)));
 export function clampPosition(p, a, width = PET_WIDTH, height = PET_HEIGHT) {
   return {
@@ -67,14 +68,19 @@ export class PetModel {
     }
   }
   beginDrag(cursor) {
+    this.dragView = this.view();
+    this.dragMoved = false;
     this.offset = { x: cursor.x - this.x, y: cursor.y - this.y };
     this.dragOrigin = { x: this.x, y: this.y };
     this.setState("drag");
   }
   dragTo(cursor) {
     if (this.state !== "drag") return;
-    this.x = cursor.x - this.offset.x;
-    this.y = cursor.y - this.offset.y;
+    const x = cursor.x - this.offset.x, y = cursor.y - this.offset.y;
+    if (!this.dragMoved && Math.hypot(x-this.dragOrigin.x,y-this.dragOrigin.y)<6) return;
+    this.dragMoved = true;
+    this.x = x;
+    this.y = y;
   }
   endDrag() {
     if (this.state !== "drag") return;
@@ -85,7 +91,7 @@ export class PetModel {
     const dt = clamp(delta, 0, 100);
     this.elapsed += dt;
     if (this.state === "walk") {
-      this.x += (this.direction * 42 * dt) / 1000;
+      this.x += (this.direction * 36 * dt) / 1000;
       const a = this.displays.find((d) => d.id === this.displayId).workArea;
       const p = clampPosition(this, a);
       if (p.x !== this.x) this.direction *= -1;
@@ -102,19 +108,19 @@ export class PetModel {
     }
   }
   frame() {
-    if (this.state === "walk") return Math.floor(this.elapsed / 160) % 4;
+    if (this.state === "drag") return this.dragView.frame;
+    if (this.state === "walk") return 12 + Math.floor(this.elapsed / 100) % 8;
     if (this.state === "sleep")
       return 6 + (Math.floor(this.elapsed / 1200) % 2);
     if (this.state === "eat") return 8 + (Math.floor(this.elapsed / 300) % 2);
-    if (this.state === "happy")
-      return 10 + (Math.floor(this.elapsed / 350) % 2);
+    if (this.state === "happy") return 5;
     return this.elapsed % 4200 > 4000 ? 5 : 4;
   }
   view() {
     return {
       state: this.state,
       frame: this.frame(),
-      mirrored: this.state === "walk" && this.direction < 0,
+      mirrored: this.state === "drag" ? this.dragView.mirrored : this.state === "walk" && this.direction < 0,
       roaming: this.roaming,
     };
   }

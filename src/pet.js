@@ -1,11 +1,11 @@
 import "./pet.css";
-import { PetModel } from "../core/pet.mjs";
+import { PetModel, FRAME_COUNT } from "../core/pet.mjs";
 const canvas = document.querySelector("#pet"),
   ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
 const frames = await Promise.all(
   Array.from(
-    { length: 12 },
+    { length: FRAME_COUNT },
     (_, i) =>
       new Promise((resolve, reject) => {
         const image = new Image();
@@ -32,7 +32,7 @@ function draw(next) {
   if (next.state === "happy") {
     ctx.font = "18px Segoe UI";
     ctx.fillStyle = "#d895a7";
-    ctx.fillText("♥", next.frame === 10 ? 48 : 154, 40);
+    ctx.fillText("♥", 154, 40);
   }
   if (next.state === "sleep") {
     ctx.font = "13px Segoe UI";

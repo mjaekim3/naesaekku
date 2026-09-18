@@ -184,7 +184,7 @@ else {
   app
     .whenReady()
     .then(async () => {
-      const { PetModel, hitAlpha } = await import("../core/pet.mjs");
+      const { PetModel, hitAlpha, FRAME_COUNT } = await import("../core/pet.mjs");
       await fs.mkdir(dir, { recursive: true });
       let saved = {};
       try {
@@ -203,7 +203,7 @@ else {
         roaming: saved.roaming,
       });
       const masks = await fs.readFile(path.join(root, "pet/alpha.bin"));
-      if (masks.length !== 12 * 192 * 192)
+      if (masks.length !== FRAME_COUNT * 192 * 192)
         throw Error("Invalid sprite alpha masks");
       protocol.handle("app", (request) => {
         const url = new URL(request.url);
@@ -278,12 +278,9 @@ else {
       });
       function endDrag() {
         if (model.state !== "drag") return;
-        const distance = Math.hypot(
-          model.x - model.dragOrigin.x,
-          model.y - model.dragOrigin.y,
-        );
+        const clicked = !model.dragMoved;
         model.endDrag();
-        if (distance < 6) model.act("pet");
+        if (clicked) model.act("pet");
         position();
         save();
         sendView(true);
@@ -375,7 +372,7 @@ else {
       const smokeStates = new Set();
       let probing = false;
       ipcMain.on("pet:painted", async (e, data) => {
-        if (!trusted(e) || !smoke || data?.frames !== 12 || !ready) return;
+        if (!trusted(e) || !smoke || data?.frames !== FRAME_COUNT || !ready) return;
         smokeStates.add(data.state);
         if (probing) return;
         probing = true;

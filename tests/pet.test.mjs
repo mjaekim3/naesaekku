@@ -88,13 +88,14 @@ test("each state selects the intended animation; idle blinks and wandering resum
   expect(p.frame()).toBe(5);
   for (let i = 0; i < 10; i++) p.tick(100);
   expect(p.state).toBe("walk");
-  expect(p.frame()).toBeLessThan(4);
+  expect(p.frame()).toBeGreaterThanOrEqual(12);
+  expect(p.frame()).toBeLessThan(20);
   p.direction = -1;
   expect(p.view().mirrored).toBe(true);
   for (const [action, low, high] of [
     ["sleep", 6, 7],
     ["eat", 8, 9],
-    ["pet", 10, 11],
+    ["pet", 5, 5],
   ]) {
     p.act(action);
     expect(p.frame()).toBe(low);
