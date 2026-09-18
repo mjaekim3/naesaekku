@@ -261,6 +261,7 @@ export class Studio {
           ? "로컬 AI가 동작 칸을 정확하게 그리지 못했어요. 기본 모습은 보관함에 남겼어요. 사진이나 설명을 바꿔 다시 시도해주세요."
           : e.message;
     } finally {
+      await this.local.release?.().catch(() => {});
       if (this.active === j.id) this.active = null;
       j.finishedAt = Date.now();
     }

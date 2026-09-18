@@ -184,6 +184,11 @@ export class LocalAI {
           : "로컬 사진 분석과 이미지 생성 준비 완료",
     };
   }
+  async release() {
+    const queue = await this.request(COMFY, '/queue');
+    if (queue.queue_running?.length === 0 && queue.queue_pending?.length === 0)
+      await this.request(COMFY, '/free', {body:{unload_models:true,free_memory:true}});
+  }
   async analyze(images, features, signal) {
     const result = await this.request(OLLAMA, "/api/chat", {
       signal,
@@ -261,7 +266,7 @@ export class LocalAI {
       const frames = [];
       for (let i = 0; i < POSES.length; i++) {
         signal?.throwIfAborted();
-        const posePrompt = 'Draw exactly ONE full-body sprite of the SAME pet character in the reference. Preserve its white forehead heart, markings, face, ears, palette and character design. '+POSES[i]+'. Keep the entire animal centered with 15 percent clear padding. Same camera scale in every pose. Only one animal. No sheet, no panels, no labels.';
+        const posePrompt = 'Draw exactly ONE full-body sprite of the SAME pet character in the reference. Preserve its exact forehead markings, coat, face, ears, palette and character design. '+POSES[i]+'. Keep the entire animal centered with 15 percent clear padding. Same camera scale in every pose. Only one animal. No sheet, no panels, no labels.';
         const frame = await this.generate(image, posePrompt, signal, 314159);
         frames.push({input:await sharp(frame.buffer).resize(216,216,{fit:'contain',background:'#00000000',kernel:'nearest'}).png().toBuffer(),left:(i%4)*256+20,top:Math.floor(i/4)*256+20});
         onProgress(i + 1);
