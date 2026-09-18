@@ -29,3 +29,10 @@
 - Personal photos and earlier drafts reside outside the executable in the user's local app data. Earlier drafts are labeled as imported artwork.
 
 Coverage numbers apply to core/gateway modules, not full UI interaction coverage. Native save-dialog interaction and encrypted-key persistence were not exercised with a real credential.
+# v0.3.0 설치형 시제품 검증
+
+- 2026-09-18: 30개 테스트 통과. 전체 statements 95.9%, branches 90%.
+- NSIS 설치 파일 `release/Somewhere-Setup-0.3.0.exe` 빌드 성공.
+- 패키지 실행 smoke: `test-results/prototype-v030/pet-smoke.json`, 종료 코드 0, 프레임 20개, idle/walk/eat/sleep/happy 렌더링, 연결된 두 모니터의 위치와 선택 ID 일치.
+- 업데이트 컨트롤러: 배포 미설정 시 네트워크 미사용, 명시적 다운로드/설치, 오류 후 재시도 검증. 온라인 GitHub 다운로드·버전 교체 및 설치 마법사의 실제 설치/제거는 미검증.
+- GitHub 원격 연결/게시 없음. 이번 로컬 빌드에서는 업데이트 미설정 안내를 표시함.
