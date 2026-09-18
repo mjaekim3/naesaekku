@@ -1,0 +1,31 @@
+{
+  "name": "터치",
+  "width": 192,
+  "height": 192,
+  "frames": 12,
+  "source": "AI-generated animation sheet derived from the approved earlier character",
+  "animations": {
+    "walk": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "idle": [
+      4,
+      5
+    ],
+    "sleep": [
+      6,
+      7
+    ],
+    "eat": [
+      8,
+      9
+    ],
+    "happy": [
+      10,
+      11
+    ]
+  }
+}
