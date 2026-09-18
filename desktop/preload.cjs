@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 const api = {};
 for (const method of [
   "state",
+  "localStatus",
+  "startLocal",
   "chatPrompt",
   "copyChatPrompt",
   "openChatGPT",

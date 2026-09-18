@@ -13,6 +13,8 @@ export const bridge =
     ? window.ongi
     : {
         state: () => request("state"),
+        localStatus: () => request("localStatus"),
+        startLocal: (r) => request("startLocal", r),
         chatPrompt: (r) => request("chatPrompt", r),
         copyChatPrompt: async (r) => {
           await navigator.clipboard.writeText(await request("chatPrompt", r));

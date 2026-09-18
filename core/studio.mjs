@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { normalize, thumbnail, pixelate, animate } from "./images.mjs";
 import { createRenderer, publicError, IMAGE_MODEL } from "./provider.mjs";
 import { savePetPack, loadPetPack, motionPrompt } from "./pet-pack.mjs";
+import { LocalAI } from "./local-ai.mjs";
 
 const text = (v, max, required = false) =>
   typeof v === "string" &&
@@ -39,10 +40,12 @@ export class Studio {
     dir,
     render = createRenderer(),
     getKey = () => process.env.OPENAI_API_KEY || "",
+    local = new LocalAI(),
   }) {
     this.dir = dir;
     this.render = render;
     this.getKey = getKey;
+    this.local = local;
     this.data = { photos: [], artworks: [], attempts: [] };
     this.jobs = new Map();
     this.saving = Promise.resolve();
@@ -213,6 +216,40 @@ export class Studio {
     if (r.mode === "refine" && !text(r.instruction, 1000, true))
       throw new Error("수정할 내용을 적어주세요.");
   }
+  localStatus() { return this.local.status(); }
+  async startLocal(r) {
+    // Reuse photo/name validation, with no network-consent or API credential requirement.
+    this.validate({ ...r, mode: "pet", quality: "medium", consent: true });
+    if (this.active) throw Error("이미 진행 중인 생성이 있어요.");
+    const id = randomUUID();
+    const job = { id, status: "running", mode: "local", startedAt: Date.now(), controller: new AbortController(), stage: "로컬 AI 연결 확인 중" };
+    this.active = id;
+    this.jobs.set(id, job);
+    void this.runLocal(job, { ...r, mode: "pet" });
+    return this.job(id);
+  }
+  async runLocal(j, r) {
+    try {
+      const status = await this.local.status();
+      if (!status.ready) throw Error(status.message);
+      const signal = j.controller.signal;
+      signal.throwIfAborted();
+      j.stage = "이 PC에서 사진 특징 분석 중 · Ollama";
+      const images = await Promise.all(r.photoIds.map(id => this.bytes(id)));
+      const analysis = await this.local.analyze(images, r.features, signal);
+      signal.throwIfAborted();
+      await this.runPet(j, { ...r, features: r.features + "\nPhoto analysis: " + analysis }, null,
+        (options) => this.local.render(options), "local");
+    } catch (e) {
+      j.status = j.controller.signal.aborted ? "canceled" : "error";
+      j.error = e.message === "SPRITE_LAYOUT"
+        ? "로컬 AI가 동작 칸을 정확하게 그리지 못했어요. 기본 모습은 보관함에 남겼어요. 사진이나 설명을 바꿔 다시 시도해주세요."
+        : e.message;
+    } finally {
+      if (this.active === j.id) this.active = null;
+      j.finishedAt = Date.now();
+    }
+  }
   async start(r) {
     this.validate(r);
     if (this.active)
@@ -310,13 +347,13 @@ export class Studio {
       j.finishedAt = Date.now();
     }
   }
-  async runPet(j, r, apiKey) {
+  async runPet(j, r, apiKey, render = this.render, source = "generated") {
     const signal = j.controller.signal;
     const photos = await Promise.all(r.photoIds.map((id) => this.bytes(id)));
     let master;
     if (r.mode === "pet") {
       j.stage = "캐릭터 모습 생성 중 · 1/3";
-      const result = await this.render({
+      const result = await render({
         images: photos,
         prompt: buildPrompt({ ...r, mode: "generate" }),
         quality: r.quality,
@@ -329,7 +366,7 @@ export class Studio {
         {
           name: r.name + " · 기본 모습",
           petName: r.name,
-          source: "generated",
+          source,
           mode: "generate",
           style: r.style,
           usage: result.usage || null,
@@ -341,7 +378,7 @@ export class Studio {
     } else master = this.find(r.baseId);
     j.stage = "걷기·대기·수면·간식 동작 생성 중 · 2/3";
     if (signal.aborted) return;
-    const result = await this.render({
+    const result = await render({
       images: [await this.bytes(master.id), ...photos],
       prompt: motionPrompt(r.name),
       quality: r.quality,
@@ -359,7 +396,7 @@ export class Studio {
       id,
       name: r.name + " · 움직이는 내새꾸",
       petName: r.name,
-      source: "generated",
+      source,
       mode: "pet",
       hasMotion: true,
       parentId: master.id,

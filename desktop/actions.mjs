@@ -8,6 +8,8 @@ export function createActions({
 }) {
   return {
     state: () => studio.state(),
+    localStatus: () => studio.localStatus(),
+    startLocal: (r) => studio.startLocal(r),
     chatPrompt: (r) => studio.chatPrompt(r),
     copyChatPrompt: async (r) => {
       const text = studio.chatPrompt(r);
