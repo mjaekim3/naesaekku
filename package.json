@@ -5,7 +5,7 @@
   "type": "module",
   "main": "desktop/main.cjs",
   "description": "A quiet home for the ones we love.",
-  "author": "Ongi Studio",
+  "author": "Somewhere, Over the Rainbow Bridge",
   "scripts": {
     "build": "vite build",
     "start": "electron .",
@@ -33,7 +33,7 @@
   },
   "build": {
     "appId": "local.ongi.studio",
-    "productName": "Ongi Studio",
+    "productName": "Somewhere, Over the Rainbow Bridge",
     "directories": {
       "output": "release"
     },
@@ -52,7 +52,7 @@
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "Ongi-Studio.exe"
+      "artifactName": "Somewhere, Over the Rainbow Bridge.exe"
     },
     "publish": null
   }

@@ -1,10 +1,10 @@
-# 온기 스튜디오 · Ongi Studio
+# Somewhere, Over the Rainbow Bridge
 
 Windows에서 반려동물 사진을 참고해 캐릭터를 생성하고, 수정하고, 눈 깜빡임을 만들어 저장하는 개인용 데스크탑 MVP입니다.
 
 ## 실행
 
-`release/Ongi-Studio.exe`를 실행하세요. Node.js 설치 없이 실행되는 Windows x64 포터블 앱입니다.
+`release/Somewhere, Over the Rainbow Bridge.exe`를 실행하세요. Node.js 설치 없이 실행되는 Windows x64 포터블 앱입니다.
 설정에서 본인 OpenAI API 키를 연결한 뒤 사진을 선택하고 생성합니다.
 API 사용료는 본인의 API 계정에 청구되며, ChatGPT 이용권과 별개입니다.
 키가 없으면 사진 가져오기, 기존 그림 보관, 픽셀 PNG 및 이미 준비된 프레임의 GIF 내보내기를 사용할 수 있습니다.

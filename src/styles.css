@@ -94,20 +94,22 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 11px;
-  font-size: 23px;
+  font-size: 17px;
   font-weight: 650;
-  letter-spacing: 2px;
+  letter-spacing: -0.4px;
   margin-bottom: 55px;
 }
 .brand span {
   display: block;
-  font-size: 8px;
-  letter-spacing: 2.2px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.5;
   font-weight: 500;
   margin-top: 5px;
   color: #7e887b;
 }
 .brand-mark {
+  flex-shrink: 0;
   background: #dfe7d8;
   border-radius: 14px 14px 19px 14px;
   width: 46px;

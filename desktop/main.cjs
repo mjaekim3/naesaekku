@@ -14,7 +14,8 @@ const { pathToFileURL } = require("node:url");
 const smoke = process.argv.includes("--smoke");
 if (process.env.ONGI_DATA_DIR)
   app.setPath("userData", path.resolve(process.env.ONGI_DATA_DIR));
-app.setName("Ongi Studio");
+else app.setPath("userData", path.join(app.getPath("appData"), "Ongi Studio"));
+app.setName("Somewhere, Over the Rainbow Bridge");
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "app",
@@ -111,7 +112,7 @@ else {
         minHeight: 740,
         show: !smoke,
         backgroundColor: "#f8f8f3",
-        title: "온기 스튜디오",
+        title: "Somewhere, Over the Rainbow Bridge",
         autoHideMenuBar: true,
         webPreferences: {
           preload: path.join(__dirname, "preload.cjs"),
