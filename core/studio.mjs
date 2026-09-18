@@ -398,7 +398,9 @@ export class Studio {
       images: [await this.bytes(master.id), ...photos],
       prompt: motionPrompt(r.name),
       motion: true,
-      onProgress: (n) => { j.stage = `로컬 동작 생성 중 · ${n}/16 프레임`; },
+      onProgress: (n) => {
+        j.stage = `로컬 동작 생성 중 · ${n}/16 프레임`;
+      },
       quality: r.quality,
       apiKey,
       signal,

@@ -574,7 +574,8 @@ else {
           const before = await window.ongi.state();
           const imported = await window.ongi.importPhotos([{name:'smoke-photo.jpg', bytes:${JSON.stringify(Array.from(photo))}}]);
           const after = await window.ongi.state();
-          return {preloadConnected:true, imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
+            const local = await window.ongi.localStatus();
+            return {preloadConnected:true, localReady:local.ready, localPanel:document.body.textContent.includes('이 PC에서 만들기'), imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
         })()`);
         let smokePetId = process.env.REGISTRATION_SMOKE_PET_ID;
         if (process.env.MANUAL_SMOKE_SHEET) {

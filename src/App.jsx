@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { bridge } from "./bridge.js";
 import PetPreview from "./PetPreview.jsx";
+import { version } from "../package.json";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
 const Icon = ({ children }) => <span className="icon">{children}</span>;
 export default function App({ initial = EMPTY }) {
@@ -57,6 +58,36 @@ export default function App({ initial = EMPTY }) {
     polling = useRef(false),
     initialized = useRef(false);
   const [chatPrompt, setChatPrompt] = useState("");
+  const [localStatus, setLocalStatus] = useState(null);
+  async function checkLocal() {
+    setWorking(true);
+    try {
+      setLocalStatus(await bridge.localStatus());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+  async function startLocal() {
+    setError("");
+    setWorking(true);
+    try {
+      const j = await bridge.startLocal({
+        name: name.trim(),
+        features,
+        style,
+        photoIds,
+      });
+      setBusy(j);
+      setElapsed(0);
+      setPlaying(false);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
+    }
+  }
   async function copyPrompt() {
     setError("");
     try {
@@ -187,7 +218,9 @@ export default function App({ initial = EMPTY }) {
             if (j.masterId) setSelected(j.masterId);
           } else
             notify(
-              "요청을 취소했어요. 이미 처리된 요청에는 비용이 발생할 수 있어요.",
+              j.mode === "local"
+                ? "로컬 생성을 취소했어요."
+                : "요청을 취소했어요. 이미 처리된 요청에는 비용이 발생할 수 있어요.",
             );
         }
       } catch (e) {
@@ -339,17 +372,17 @@ export default function App({ initial = EMPTY }) {
             className={data.hasKey ? "status-dot connected" : "status-dot"}
           />
           <div>
-            {data.hasKey ? "API 키 저장됨" : "API 연결 필요"}
+            {data.hasKey ? "API 키 저장됨" : "OpenAI 연결 · 선택"}
             <small>
               {data.hasKey
                 ? "생성할 때 연결을 확인해요"
-                : "설정에서 연결해주세요"}
+                : "로컬 생성에는 필요 없어요"}
             </small>
           </div>
           <Settings size={16} />
         </button>
         <div className="version">
-          내새꾸, 내곁에 <span>v0.6.0</span>
+          내새꾸, 내곁에 <span>v{version}</span>
         </div>
       </aside>
       <main>
@@ -401,6 +434,54 @@ export default function App({ initial = EMPTY }) {
             </button>
           </div>
         </section>
+        {page === "studio" && (
+          <section
+            className="panel"
+            style={{ margin: "0 0 24px", padding: 24 }}
+          >
+            <h2 style={{ fontSize: 18, marginBottom: 12 }}>
+              이 PC에서 만들기 · 실험 기능
+            </h2>
+            <p className="hint">
+              아래에서 사진과 이름을 등록하면 Ollama가 특징을 읽고 ComfyUI가
+              기본 모습과 동작을 그려요. API 키나 사용료 없이 이 PC에서
+              처리해요.
+            </p>
+            <p className="hint">
+              로컬 AI를 먼저 실행해주세요. 생성 중에는 GPU를 사용하며 수 분 이상
+              걸릴 수 있어요. 동작이나 무늬가 달라질 수 있으니 완성된 미리보기를
+              확인해주세요.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="outline-button"
+                disabled={working || !!busy}
+                onClick={checkLocal}
+              >
+                로컬 AI 연결 확인
+              </button>
+              <button
+                className="primary"
+                disabled={!name.trim() || !photoIds.length || working || !!busy}
+                onClick={startLocal}
+              >
+                사진으로 로컬 동작 만들기
+              </button>
+            </div>
+            {localStatus && (
+              <p className="hint" role="status">
+                {localStatus.message}
+              </p>
+            )}
+          </section>
+        )}
         {page === "studio" && (
           <section
             className="panel"

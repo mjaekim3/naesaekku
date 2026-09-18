@@ -318,7 +318,7 @@ export class LocalAI {
   ) {
     const localPrompt =
       prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") +
-      "\nThe whole background must be flat pure magenta #FF00FF, with NO shadows, ground, grid lines or text. No magenta on the animal. Preserve the animal identity in the reference. Crisp pixel-art sprite design, no photorealism.";
+      "\nThe whole background must be flat pure magenta #FF00FF, with NO shadows, ground, grid lines or text. No magenta on the animal. Preserve the animal identity in the reference. Follow the requested illustration style and the approved character design, no photorealism.";
     const queued = await this.request(COMFY, "/prompt", {
       body: {
         prompt: fluxWorkflow(image, localPrompt, seed),

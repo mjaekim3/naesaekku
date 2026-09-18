@@ -9,7 +9,8 @@ test("empty studio explains photo workflow and never pretends an image is genera
     }),
   );
   expect(html).toContain("사진 추가");
-  expect(html).toContain("API 연결 필요");
+  expect(html).toContain("OpenAI 연결 · 선택");
+  expect(html).toContain("로컬 생성에는 필요 없어요");
   expect(html).toContain("OpenAI");
   expect(html).toContain("disabled");
   expect(html).not.toContain("생성이 완료");
