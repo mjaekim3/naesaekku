@@ -1,10 +1,10 @@
 {
-  "name": "ongi-studio",
-  "version": "0.3.1",
+  "name": "naesaekku",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "main": "desktop/main.cjs",
-  "description": "A quiet home for the ones we love.",
+  "description": "내 반려동물과 바탕화면에서 함께하는 데스크톱 펫",
   "author": "내새꾸, 내곁에",
   "scripts": {
     "build": "vite build",
@@ -53,7 +53,8 @@
     "win": {
       "icon": "assets/icon.ico",
       "target": "nsis",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true,
+      "signExecutable": false
     },
     "portable": {
       "artifactName": "내새꾸, 내곁에.exe"
@@ -66,7 +67,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": false,
-      "artifactName": "내새꾸-내곁에-Setup-${version}.${ext}"
+      "artifactName": "내새꾸-내곁에-Setup-${version}.${ext}",
+      "uninstallDisplayName": "내새꾸, 내곁에"
     }
   }
 }
