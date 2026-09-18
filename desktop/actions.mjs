@@ -1,10 +1,26 @@
-export function createActions({ studio, setKey, saveFile, activatePet, copyText, openChatGPT }) {
+export function createActions({
+  studio,
+  setKey,
+  saveFile,
+  activatePet,
+  copyText,
+  openChatGPT,
+}) {
   return {
     state: () => studio.state(),
-    chatPrompt: r => studio.chatPrompt(r),
-    copyChatPrompt: async r => {const text=studio.chatPrompt(r);if(!copyText)throw Error('프롬프트를 직접 복사해주세요.');await copyText(text);return {copied:true};},
-    openChatGPT: async () => {if(!openChatGPT)throw Error('브라우저에서 chatgpt.com을 열어주세요.');await openChatGPT();return {opened:true};},
-    importPetSheet: r => studio.importPetSheet(r),
+    chatPrompt: (r) => studio.chatPrompt(r),
+    copyChatPrompt: async (r) => {
+      const text = studio.chatPrompt(r);
+      if (!copyText) throw Error("프롬프트를 직접 복사해주세요.");
+      await copyText(text);
+      return { copied: true };
+    },
+    openChatGPT: async () => {
+      if (!openChatGPT) throw Error("브라우저에서 chatgpt.com을 열어주세요.");
+      await openChatGPT();
+      return { opened: true };
+    },
+    importPetSheet: (r) => studio.importPetSheet(r),
     petFrames: (id) => studio.petFrames(id),
     activatePet: async (id) => {
       if (!studio.find(id).hasMotion)

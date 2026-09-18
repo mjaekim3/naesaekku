@@ -49,3 +49,8 @@ Coverage numbers apply to core/gateway modules, not full UI interaction coverage
 - `scripts/seed-pipeline-smoke.mjs`는 기존 터치 아트로 만든 오프라인 응답만 사용합니다. 실제 AI 생성 결과가 아닙니다.
 - `test-results/pipeline/registration-smoke.json`에서 실제 renderer IPC로 동작 20개 조회, 바탕화면 교체, idle 렌더링 및 선택 저장을 확인했습니다.
 - 실제 OpenAI 키로 유료 생성 및 생성된 그림의 동작 품질은 미검증. 자동 시트 형식 검증은 의미상 올바른 걸음/닮음을 보장하지 않습니다.
+# v0.6.0 ChatGPT 반자동 경로
+
+- 35개 테스트 통과. API 키 없이 이름·특징 반영 프롬프트 생성 및 동작 시트 로컬 가져오기 검증. 공급자 render 함수 호출 0회.
+- `test-results/manual-import/registration-smoke.json`: 실제 Electron preload를 통해 PNG 시트를 가져오고 프레임 20개 조회, 데스크톱 교체, idle 표시, 선택 ID 저장 성공.
+- 테스트 시트는 기존 터치 아트로 조립한 fixture입니다. ChatGPT에서 새로 생성한 결과의 품질 검증은 포함되지 않습니다.

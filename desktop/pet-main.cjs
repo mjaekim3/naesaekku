@@ -576,8 +576,22 @@ else {
           const after = await window.ongi.state();
           return {preloadConnected:true, imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
         })()`);
-        if (process.env.REGISTRATION_SMOKE_PET_ID) {
-          const id = process.env.REGISTRATION_SMOKE_PET_ID;
+        let smokePetId = process.env.REGISTRATION_SMOKE_PET_ID;
+        if (process.env.MANUAL_SMOKE_SHEET) {
+          const bytes = Array.from(
+            await fs.readFile(process.env.MANUAL_SMOKE_SHEET),
+          );
+          const imported = await w.webContents.executeJavaScript(
+            `window.ongi.importPetSheet({name:'가져오기 검증',file:{name:'sheet.png',bytes:${JSON.stringify(bytes)}}})`,
+          );
+          smokePetId = imported.id;
+          result.manualImport = imported.hasMotion;
+          result.promptReady = await w.webContents.executeJavaScript(
+            `window.ongi.chatPrompt({name:'터치',features:'흰 하트',style:'pixel'}).then(p=>p.includes('흰 하트') && p.includes('4 columns'))`,
+          );
+        }
+        if (smokePetId) {
+          const id = smokePetId;
           result.activation = await w.webContents.executeJavaScript(
             `window.ongi.activatePet(${JSON.stringify(id)})`,
           );
@@ -593,7 +607,8 @@ else {
           result.saved = JSON.parse(
             await fs.readFile(path.join(dir, "pet-state.json"), "utf8"),
           ).petId;
-          result.previewLoaded=await w.webContents.executeJavaScript(`new Promise(resolve => {
+          result.previewLoaded = await w.webContents
+            .executeJavaScript(`new Promise(resolve => {
             const started=Date.now();const timer=setInterval(()=>{
               const image=document.querySelector('img[alt="생성된 동작 미리보기"]');
               if(image?.naturalWidth){clearInterval(timer);resolve(true);}

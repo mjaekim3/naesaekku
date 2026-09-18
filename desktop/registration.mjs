@@ -34,8 +34,8 @@ export function createRegistration({
     const actions = createActions({
       studio,
       activatePet,
-      copyText: text => electron.clipboard.writeText(text),
-      openChatGPT: () => electron.shell.openExternal('https://chatgpt.com/'),
+      copyText: (text) => electron.clipboard.writeText(text),
+      openChatGPT: () => electron.shell.openExternal("https://chatgpt.com/"),
       setKey: async ({ key, remember }) => {
         if (remember && key) {
           if (!safeStorage.isEncryptionAvailable())

@@ -52,9 +52,50 @@ export default function App({ initial = EMPTY }) {
     [blinkView, setBlinkView] = useState(null),
     [working, setWorking] = useState(false);
   const files = useRef(),
+    sheetFile = useRef(),
     artFile = useRef(),
     polling = useRef(false),
     initialized = useRef(false);
+  const [chatPrompt, setChatPrompt] = useState("");
+  async function copyPrompt() {
+    setError("");
+    try {
+      const request = { name: name.trim(), features, style };
+      setChatPrompt(await bridge.chatPrompt(request));
+      await bridge.copyChatPrompt(request);
+      notify(
+        "프롬프트를 복사했어요. ChatGPT에서 원본 사진을 첨부하고 붙여넣어주세요.",
+      );
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  async function importSheet(file) {
+    if (!file) return;
+    setWorking(true);
+    setError("");
+    try {
+      if (file.size > 20 * 1024 * 1024)
+        throw Error("동작 시트는 20MB 이하여야 해요.");
+      const pet = await bridge.importPetSheet({
+        name: name.trim(),
+        file: {
+          name: file.name,
+          bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
+        },
+      });
+      await refresh();
+      setSelected(pet.id);
+      setPage("studio");
+      setPixel(false);
+      notify("동작을 가져왔어요. 미리보기 확인 후 바탕화면에 데려오세요.");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
+      if (sheetFile.current) sheetFile.current.value = "";
+    }
+  }
   const artwork = data.artworks.find((a) => a.id === selected),
     blink = data.artworks.find(
       (a) => a.parentId === selected && a.mode === "blink",
@@ -308,7 +349,7 @@ export default function App({ initial = EMPTY }) {
           <Settings size={16} />
         </button>
         <div className="version">
-          내새꾸, 내곁에 <span>v0.5.0</span>
+          내새꾸, 내곁에 <span>v0.6.0</span>
         </div>
       </aside>
       <main>
@@ -360,6 +401,84 @@ export default function App({ initial = EMPTY }) {
             </button>
           </div>
         </section>
+        {page === "studio" && (
+          <section
+            className="panel"
+            style={{ margin: "0 0 24px", padding: 24 }}
+          >
+            <h2 style={{ fontSize: 18, marginBottom: 12 }}>
+              ChatGPT로 만들기 · API 키 없이
+            </h2>
+            <p className="hint">
+              아래에 아이 이름·특징을 입력 → 프롬프트 복사 → ChatGPT에 원본
+              사진을 직접 첨부하고 붙여넣기 → 완성된 PNG 가져오기
+            </p>
+            <p className="hint">
+              사진은 자동 전송되지 않아요. ChatGPT의 이미지 생성 이용 한도가
+              적용됩니다. 앱은 이름·특징을 규격에 맞춰 정리하며 사진 분석은
+              ChatGPT가 진행해요.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginTop: 16,
+              }}
+            >
+              <button
+                className="primary"
+                disabled={!name.trim() || working || !!busy}
+                onClick={copyPrompt}
+              >
+                ① 프롬프트 복사
+              </button>
+              <button
+                className="outline-button"
+                onClick={() =>
+                  bridge.openChatGPT().catch((e) => setError(e.message))
+                }
+              >
+                ② ChatGPT 열기
+              </button>
+              <button
+                className="outline-button"
+                disabled={!name.trim() || working || !!busy}
+                onClick={() => sheetFile.current.click()}
+              >
+                {working ? "처리 중…" : "③ 동작 시트 가져오기"}
+              </button>
+            </div>
+            {!name.trim() && (
+              <p className="hint">
+                아래 ‘아이의 이름’을 입력하면 복사·가져오기 버튼이 활성화돼요.
+              </p>
+            )}
+            {chatPrompt && (
+              <details style={{ marginTop: 12 }}>
+                <summary>프롬프트 보기 / 직접 복사</summary>
+                <textarea
+                  aria-label="ChatGPT용 프롬프트"
+                  readOnly
+                  value={chatPrompt}
+                  onFocus={(e) => e.target.select()}
+                  style={{ width: "100%", minHeight: 170, marginTop: 10 }}
+                />
+              </details>
+            )}
+            <p className="hint">
+              정사각형 · 4×4칸 · 실제 투명 배경의 PNG가 필요해요. 일반 사진 한
+              장은 동작 시트로 사용할 수 없어요.
+            </p>
+          </section>
+        )}
+        <input
+          ref={sheetFile}
+          type="file"
+          accept="image/png"
+          hidden
+          onChange={(e) => importSheet(e.target.files?.[0])}
+        />
         <input
           ref={files}
           type="file"
