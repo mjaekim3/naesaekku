@@ -7,30 +7,59 @@ import { Studio } from "../core/studio.mjs";
 import { LocalAI, removeChroma, fluxWorkflow } from "../core/local-ai.mjs";
 import { preparePetSheet } from "../core/pet-pack.mjs";
 
-test('idle local models can be released without interrupting another queued task', async()=>{
-  let queue={queue_running:[],queue_pending:[]};
-  const calls=[];
-  const local=new LocalAI({fetch:async(url)=>{calls.push(url);return Response.json(queue);}});
+test("idle local models can be released without interrupting another queued task", async () => {
+  let queue = { queue_running: [], queue_pending: [] };
+  const calls = [];
+  const local = new LocalAI({
+    fetch: async (url) => {
+      calls.push(url);
+      if (url.endsWith('/free')) return new Response(null, {status:200});
+      return Response.json(queue);
+    },
+  });
   await local.release();
-  expect(calls.some(url=>url.endsWith('/free'))).toBe(true);
-  calls.length=0;
-  queue={queue_running:[[1,'someone-else']],queue_pending:[]};
+  expect(calls.some((url) => url.endsWith("/free"))).toBe(true);
+  calls.length = 0;
+  queue = { queue_running: [[1, "someone-else"]], queue_pending: [] };
   await local.release();
-  expect(calls.some(url=>url.endsWith('/free'))).toBe(false);
+  expect(calls.some((url) => url.endsWith("/free"))).toBe(false);
 });
 
-test('local motion generates sixteen separate poses and assembles a valid sheet', async()=>{
-  const tile=await sharp({create:{width:24,height:32,channels:3,background:'#222222'}}).png().toBuffer();
-  const png=await sharp({create:{width:64,height:64,channels:3,background:'#ff00ff'}}).composite([{input:tile,left:20,top:16}]).png().toBuffer();
-  const prompts=[];
-  const local=new LocalAI({fetch:async(url,options)=>{
-    if(url.endsWith('/upload/image')) return Response.json({name:'pet.png'});
-    if(url.endsWith('/prompt')) {prompts.push(JSON.parse(options.body).prompt['6'].inputs.text);return Response.json({prompt_id:'job'});}
-    if(url.includes('/history/')) return Response.json({job:{outputs:{'17':{images:[{filename:'pose.png'}]}}}});
-    return new Response(png);
-  }});
-  const progress=[];
-  const out=await local.render({images:[png],prompt:'same pet',motion:true,onProgress:n=>progress.push(n)});
+test("local motion generates sixteen separate poses and assembles a valid sheet", async () => {
+  const tile = await sharp({
+    create: { width: 24, height: 32, channels: 3, background: "#222222" },
+  })
+    .png()
+    .toBuffer();
+  const png = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: "#ff00ff" },
+  })
+    .composite([{ input: tile, left: 20, top: 16 }])
+    .png()
+    .toBuffer();
+  const prompts = [];
+  const local = new LocalAI({
+    fetch: async (url, options) => {
+      if (url.endsWith("/upload/image"))
+        return Response.json({ name: "pet.png" });
+      if (url.endsWith("/prompt")) {
+        prompts.push(JSON.parse(options.body).prompt["6"].inputs.text);
+        return Response.json({ prompt_id: "job" });
+      }
+      if (url.includes("/history/"))
+        return Response.json({
+          job: { outputs: { 17: { images: [{ filename: "pose.png" }] } } },
+        });
+      return new Response(png);
+    },
+  });
+  const progress = [];
+  const out = await local.render({
+    images: [png],
+    prompt: "same pet",
+    motion: true,
+    onProgress: (n) => progress.push(n),
+  });
   expect(prompts).toHaveLength(16);
   expect(new Set(prompts).size).toBe(16);
   expect(progress.at(-1)).toBe(16);
