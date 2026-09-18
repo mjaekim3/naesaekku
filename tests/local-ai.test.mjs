@@ -1,70 +1,232 @@
-import { test, expect, vi } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import sharp from 'sharp';
-import { Studio } from '../core/studio.mjs';
-import { LocalAI, removeChroma, fluxWorkflow } from '../core/local-ai.mjs';
+import { test, expect, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
+import { Studio } from "../core/studio.mjs";
+import { LocalAI, removeChroma, fluxWorkflow } from "../core/local-ai.mjs";
+import { preparePetSheet } from "../core/pet-pack.mjs";
 
-test('local vision sends photos only to loopback, uses no credentials and unloads model', async () => {
-  const calls = [];
-  const local = new LocalAI({fetch: async (url, options) => {
-    calls.push([url, options]);
-    return Response.json({message:{content:'White heart forehead, black ears.'}});
+test('local motion generates sixteen separate poses and assembles a valid sheet', async()=>{
+  const tile=await sharp({create:{width:24,height:32,channels:3,background:'#222222'}}).png().toBuffer();
+  const png=await sharp({create:{width:64,height:64,channels:3,background:'#ff00ff'}}).composite([{input:tile,left:20,top:16}]).png().toBuffer();
+  const prompts=[];
+  const local=new LocalAI({fetch:async(url,options)=>{
+    if(url.endsWith('/upload/image')) return Response.json({name:'pet.png'});
+    if(url.endsWith('/prompt')) {prompts.push(JSON.parse(options.body).prompt['6'].inputs.text);return Response.json({prompt_id:'job'});}
+    if(url.includes('/history/')) return Response.json({job:{outputs:{'17':{images:[{filename:'pose.png'}]}}}});
+    return new Response(png);
   }});
-  expect(await local.analyze([Buffer.from('photo')], 'pink lips')).toContain('heart');
-  expect(calls[0][0]).toBe('http://127.0.0.1:11434/api/chat');
-  const body = JSON.parse(calls[0][1].body);
-  expect(body.messages[1].images).toEqual([Buffer.from('photo').toString('base64')]);
-  expect(body.keep_alive).toBe(0);
-  expect(body.stream).toBe(false);
-  expect(calls[0][1].redirect).toBe('error');
+  const progress=[];
+  const out=await local.render({images:[png],prompt:'same pet',motion:true,onProgress:n=>progress.push(n)});
+  expect(prompts).toHaveLength(16);
+  expect(new Set(prompts).size).toBe(16);
+  expect(progress.at(-1)).toBe(16);
+  expect((await preparePetSheet(out.buffer)).frames).toHaveLength(20);
 });
 
-test('Comfy workflow keeps image reference conditioning and removes only magenta background', async () => {
-  const workflow = fluxWorkflow('ref.png', 'pet prompt', 123);
-  expect(Object.values(workflow).find(n=>n.class_type==='LoadImage').inputs.image).toBe('ref.png');
-  expect(Object.values(workflow).some(n=>n.class_type==='ReferenceLatent')).toBe(true);
-  const input = await sharp({create:{width:64,height:64,channels:3,background:'#ff00ff'}})
-    .composite([{input:await sharp({create:{width:20,height:20,channels:3,background:'#ffffff'}}).png().toBuffer(),left:22,top:22}]).png().toBuffer();
+test("local vision sends photos only to loopback, uses no credentials and unloads model", async () => {
+  const calls = [];
+  const local = new LocalAI({
+    fetch: async (url, options) => {
+      calls.push([url, options]);
+      return Response.json({
+        message: { content: "White heart forehead, black ears." },
+      });
+    },
+  });
+  expect(await local.analyze([Buffer.from("photo")], "pink lips")).toContain(
+    "heart",
+  );
+  expect(calls[0][0]).toBe("http://127.0.0.1:11434/api/chat");
+  const body = JSON.parse(calls[0][1].body);
+  expect(body.messages[1].images).toEqual([
+    Buffer.from("photo").toString("base64"),
+  ]);
+  expect(body.keep_alive).toBe(0);
+  expect(body.stream).toBe(false);
+  expect(calls[0][1].redirect).toBe("error");
+});
+
+test("Comfy workflow keeps image reference conditioning and removes only magenta background", async () => {
+  const workflow = fluxWorkflow("ref.png", "pet prompt", 123);
+  expect(
+    Object.values(workflow).find((n) => n.class_type === "LoadImage").inputs
+      .image,
+  ).toBe("ref.png");
+  expect(
+    Object.values(workflow).some((n) => n.class_type === "ReferenceLatent"),
+  ).toBe(true);
+  const input = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: "#ff00ff" },
+  })
+    .composite([
+      {
+        input: await sharp({
+          create: { width: 20, height: 20, channels: 3, background: "#ffffff" },
+        })
+          .png()
+          .toBuffer(),
+        left: 22,
+        top: 22,
+      },
+    ])
+    .png()
+    .toBuffer();
   const output = await removeChroma(input);
   const raw = await sharp(output).raw().toBuffer();
   expect(raw[3]).toBe(0);
-  expect(raw[(32*64+32)*4+3]).toBe(255);
+  expect(raw[(32 * 64 + 32) * 4 + 3]).toBe(255);
 });
 
-test('local connection errors and missing vision results are actionable', async () => {
-  const down = new LocalAI({fetch:async()=>{throw Error('down');}});
+test("local connection errors and missing vision results are actionable", async () => {
+  const down = new LocalAI({
+    fetch: async () => {
+      throw Error("down");
+    },
+  });
   expect((await down.status()).ready).toBe(false);
-  await expect(down.analyze([Buffer.from('a')], '')).rejects.toThrow('Ollama');
-  const empty = new LocalAI({fetch:async()=>Response.json({})});
-  await expect(empty.analyze([Buffer.from('a')], '')).rejects.toThrow('분석');
+  await expect(down.analyze([Buffer.from("a")], "")).rejects.toThrow("Ollama");
+  const empty = new LocalAI({ fetch: async () => Response.json({}) });
+  await expect(empty.analyze([Buffer.from("a")], "")).rejects.toThrow("분석");
 });
 
-test('local photo to motion uses no API key or paid renderer and persists animation', async () => {
-  const dir=await mkdtemp(join(tmpdir(),'local-pet-'));
+test("Comfy upload, queue, history and download return a transparent image; cancel is task scoped", async () => {
+  const png = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: "#ff00ff" },
+  })
+    .png()
+    .toBuffer();
+  const calls = [];
+  let failed = false;
+  const local = new LocalAI({
+    fetch: async (url, options) => {
+      calls.push([url, options]);
+      expect(url.startsWith("http://127.0.0.1:")).toBe(true);
+      if (url.endsWith("/upload/image"))
+        return Response.json({ name: "reference.png", subfolder: "" });
+      if (url.endsWith("/prompt"))
+        return Response.json({ prompt_id: "test-job" });
+      if (url.includes("/history/"))
+        return Response.json({
+          "test-job": failed
+            ? { status: { status_str: "error" } }
+            : { outputs: { 17: { images: [{ filename: "result.png" }] } } },
+        });
+      if (url.includes("/view?")) return new Response(png);
+      return Response.json({});
+    },
+  });
+  const result = await local.render({
+    images: [png, png],
+    prompt: "transparent pet",
+    signal: new AbortController().signal,
+  });
+  expect((await sharp(result.buffer).metadata()).hasAlpha).toBe(true);
+  const prompt = JSON.parse(
+    calls.find(([url]) => url.endsWith("/prompt"))[1].body,
+  ).prompt;
+  expect(prompt["6"].inputs.text).toContain("magenta");
+  failed = true;
+  await expect(local.render({ images: [png], prompt: "pet" })).rejects.toThrow(
+    "GPU",
+  );
+  expect(
+    JSON.parse(calls.find(([url]) => url.endsWith("/interrupt"))[1].body),
+  ).toEqual({ prompt_id: "test-job" });
+  expect(
+    JSON.parse(calls.find(([url]) => url.endsWith("/queue"))[1].body),
+  ).toEqual({ delete: ["test-job"] });
+});
+
+test("readiness requires installed local models and nodes, HTTP failures cannot redirect photos", async () => {
+  const nodes = Object.fromEntries(
+    Object.values(fluxWorkflow("x", "x", 1)).map((n) => [n.class_type, {}]),
+  );
+  nodes.UNETLoader = {
+    input: { required: { unet_name: [["flux-2-klein-4b-fp8.safetensors"]] } },
+  };
+  nodes.CLIPLoader = {
+    input: { required: { clip_name: [["qwen_3_4b_fp4_flux2.safetensors"]] } },
+  };
+  nodes.VAELoader = {
+    input: { required: { vae_name: [["flux2-vae.safetensors"]] } },
+  };
+  const local = new LocalAI({
+    fetch: async (url) =>
+      Response.json(
+        url.endsWith("/api/tags")
+          ? { models: [{ name: "qwen2.5vl:3b" }] }
+          : nodes,
+      ),
+  });
+  expect((await local.status()).ready).toBe(true);
+  delete nodes.VAELoader;
+  expect((await local.status()).comfy).toBe(false);
+  const down = new LocalAI({
+    fetch: async () => new Response("", { status: 503 }),
+  });
+  await expect(down.analyze([Buffer.from("a")], "")).rejects.toThrow("Ollama");
+});
+
+test("local photo to motion uses no API key or paid renderer and persists animation", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "local-pet-"));
   try {
-    const tile=await sharp({create:{width:30,height:36,channels:4,background:'#222'}}).png().toBuffer();
-    const sheet=await sharp({create:{width:256,height:256,channels:4,background:'#00000000'}})
-      .composite(Array.from({length:16},(_,i)=>({input:tile,left:(i%4)*64+17,top:Math.floor(i/4)*64+14}))).png().toBuffer();
-    const cloud=vi.fn();
-    const local={status:async()=>({ready:true}),analyze:vi.fn(async()=> 'white heart'),render:vi.fn(async()=>({buffer:sheet}))};
-    const studio=await Studio.open({dir,render:cloud,getKey:()=>'',local});
-    const [photo]=await studio.importPhotos([{name:'pet.png',bytes:sheet}]);
-    const request={name:'터치',features:'pink lips',style:'pixel',photoIds:[photo.id]};
-    await expect(studio.startLocal({...request,photoIds:['missing']})).rejects.toThrow();
-    const job=await studio.startLocal(request);
+    const tile = await sharp({
+      create: { width: 30, height: 36, channels: 4, background: "#222" },
+    })
+      .png()
+      .toBuffer();
+    const sheet = await sharp({
+      create: { width: 256, height: 256, channels: 4, background: "#00000000" },
+    })
+      .composite(
+        Array.from({ length: 16 }, (_, i) => ({
+          input: tile,
+          left: (i % 4) * 64 + 17,
+          top: Math.floor(i / 4) * 64 + 14,
+        })),
+      )
+      .png()
+      .toBuffer();
+    const cloud = vi.fn();
+    const local = {
+      status: async () => ({ ready: true }),
+      analyze: vi.fn(async () => "white heart"),
+      render: vi.fn(async () => ({ buffer: sheet })),
+    };
+    const studio = await Studio.open({
+      dir,
+      render: cloud,
+      getKey: () => "",
+      local,
+    });
+    const [photo] = await studio.importPhotos([
+      { name: "pet.png", bytes: sheet },
+    ]);
+    const request = {
+      name: "터치",
+      features: "pink lips",
+      style: "pixel",
+      photoIds: [photo.id],
+    };
+    await expect(
+      studio.startLocal({ ...request, photoIds: ["missing"] }),
+    ).rejects.toThrow();
+    const job = await studio.startLocal(request);
     await expect(studio.startLocal(request)).rejects.toThrow();
-    while(studio.active) await new Promise(r=>setTimeout(r,10));
-    expect(studio.job(job.id).status).toBe('complete');
+    while (studio.active) await new Promise((r) => setTimeout(r, 10));
+    expect(studio.job(job.id).status).toBe("complete");
     expect(cloud).not.toHaveBeenCalled();
     expect(local.analyze).toHaveBeenCalledTimes(1);
     expect(local.render).toHaveBeenCalledTimes(2);
     expect(studio.data.attempts).toHaveLength(0);
-    const state=await studio.state();
-    expect(state.artworks[0].source).toBe('local');
+    const state = await studio.state();
+    expect(state.artworks[0].source).toBe("local");
     expect(await studio.petFrames(state.artworks[0].id)).toHaveLength(20);
-    const reopened=await Studio.open({dir});
+    const reopened = await Studio.open({ dir });
     expect((await reopened.state()).artworks[0].hasMotion).toBe(true);
-  } finally {await rm(dir,{recursive:true,force:true});}
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
