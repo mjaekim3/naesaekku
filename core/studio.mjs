@@ -216,13 +216,22 @@ export class Studio {
     if (r.mode === "refine" && !text(r.instruction, 1000, true))
       throw new Error("수정할 내용을 적어주세요.");
   }
-  localStatus() { return this.local.status(); }
+  localStatus() {
+    return this.local.status();
+  }
   async startLocal(r) {
     // Reuse photo/name validation, with no network-consent or API credential requirement.
     this.validate({ ...r, mode: "pet", quality: "medium", consent: true });
     if (this.active) throw Error("이미 진행 중인 생성이 있어요.");
     const id = randomUUID();
-    const job = { id, status: "running", mode: "local", startedAt: Date.now(), controller: new AbortController(), stage: "로컬 AI 연결 확인 중" };
+    const job = {
+      id,
+      status: "running",
+      mode: "local",
+      startedAt: Date.now(),
+      controller: new AbortController(),
+      stage: "로컬 AI 연결 확인 중",
+    };
     this.active = id;
     this.jobs.set(id, job);
     void this.runLocal(job, { ...r, mode: "pet" });
@@ -235,16 +244,22 @@ export class Studio {
       const signal = j.controller.signal;
       signal.throwIfAborted();
       j.stage = "이 PC에서 사진 특징 분석 중 · Ollama";
-      const images = await Promise.all(r.photoIds.map(id => this.bytes(id)));
+      const images = await Promise.all(r.photoIds.map((id) => this.bytes(id)));
       const analysis = await this.local.analyze(images, r.features, signal);
       signal.throwIfAborted();
-      await this.runPet(j, { ...r, features: r.features + "\nPhoto analysis: " + analysis }, null,
-        (options) => this.local.render(options), "local");
+      await this.runPet(
+        j,
+        { ...r, features: r.features + "\nPhoto analysis: " + analysis },
+        null,
+        (options) => this.local.render(options),
+        "local",
+      );
     } catch (e) {
       j.status = j.controller.signal.aborted ? "canceled" : "error";
-      j.error = e.message === "SPRITE_LAYOUT"
-        ? "로컬 AI가 동작 칸을 정확하게 그리지 못했어요. 기본 모습은 보관함에 남겼어요. 사진이나 설명을 바꿔 다시 시도해주세요."
-        : e.message;
+      j.error =
+        e.message === "SPRITE_LAYOUT"
+          ? "로컬 AI가 동작 칸을 정확하게 그리지 못했어요. 기본 모습은 보관함에 남겼어요. 사진이나 설명을 바꿔 다시 시도해주세요."
+          : e.message;
     } finally {
       if (this.active === j.id) this.active = null;
       j.finishedAt = Date.now();
@@ -381,6 +396,8 @@ export class Studio {
     const result = await render({
       images: [await this.bytes(master.id), ...photos],
       prompt: motionPrompt(r.name),
+      motion: true,
+      onProgress: (n) => { j.stage = `로컬 동작 생성 중 · ${n}/16 프레임`; },
       quality: r.quality,
       apiKey,
       signal,
