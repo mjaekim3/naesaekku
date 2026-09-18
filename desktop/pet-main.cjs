@@ -53,6 +53,48 @@ let pet,
   saveChain = Promise.resolve();
 const root = path.resolve(__dirname, "../dist");
 const dir = app.getPath("userData");
+let updates;
+async function updateAction() {
+  const state = updates.status.state;
+  if (state === "unconfigured") {
+    await dialog.showMessageBox({
+      type: "info",
+      title,
+      message: "로컬 시제품이에요.",
+      detail: "GitHub 배포 저장소가 연결되면 이 메뉴에서 업데이트할 수 있어요.",
+    });
+  } else if (state === "available") {
+    await updates.download();
+  } else if (state === "ready") {
+    const result = await dialog.showMessageBox({
+      type: "question",
+      title,
+      message: "새 버전을 설치하고 다시 시작할까요?",
+      buttons: ["설치하고 다시 시작", "나중에"],
+      defaultId: 1,
+      cancelId: 1,
+    });
+    if (result.response === 0) {
+      await save();
+      quitting = true;
+      clearTimeout(timer);
+      updates.install();
+    }
+  } else await updates.check();
+}
+function updateLabel() {
+  const s = updates?.status || { state: "idle" };
+  return (
+    {
+      checking: "업데이트 확인 중…",
+      available: `새 버전 ${s.version} 다운로드`,
+      downloading: `업데이트 다운로드 중 · ${s.percent}%`,
+      ready: "업데이트 설치하고 다시 시작",
+      current: "최신 버전이에요 · 다시 확인",
+      error: "연결 실패 · 업데이트 다시 확인",
+    }[s.state] || "업데이트 확인"
+  );
+}
 function save() {
   const value = JSON.stringify(model.snapshot());
   saveChain = saveChain
@@ -170,6 +212,12 @@ function items() {
       },
     },
     { type: "separator" },
+    {
+      label: updateLabel(),
+      enabled: !["checking", "downloading"].includes(updates?.status.state),
+      click: () => updateAction().catch(() => {}),
+    },
+    { label: `버전 ${app.getVersion()} · 터치 시제품`, enabled: false },
     { label: "종료", click: () => app.quit() },
   ];
 }
@@ -186,6 +234,22 @@ else {
     .then(async () => {
       const { PetModel, hitAlpha, FRAME_COUNT } =
         await import("../core/pet.mjs");
+      const { createUpdates } = await import("../core/updates.mjs");
+      const { autoUpdater } = require("electron-updater");
+      let configured = false;
+      if (app.isPackaged && !process.env.PORTABLE_EXECUTABLE_FILE && !smoke) {
+        configured = await fs
+          .access(path.join(process.resourcesPath, "app-update.yml"))
+          .then(
+            () => true,
+            () => false,
+          );
+      }
+      updates = createUpdates({
+        updater: autoUpdater,
+        enabled: configured,
+        changed: refreshTray,
+      });
       await fs.mkdir(dir, { recursive: true });
       let saved = {};
       try {

@@ -1,6 +1,6 @@
 {
   "name": "ongi-studio",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "main": "desktop/main.cjs",
@@ -14,9 +14,11 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "preview": "node server/preview.mjs",
-    "dist": "npm run build && electron-builder --win portable --x64 --publish never"
+    "dist": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
+    "electron-updater": "6.8.9",
     "gifenc": "1.0.3",
     "lucide-react": "1.47.0",
     "openai": "7.18.0",
@@ -50,12 +52,21 @@
     "asar": true,
     "win": {
       "icon": "assets/icon.ico",
-      "target": "portable",
+      "target": "nsis",
       "signAndEditExecutable": false
     },
     "portable": {
       "artifactName": "Somewhere, Over the Rainbow Bridge.exe"
     },
-    "publish": null
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Somewhere-Setup-${version}.${ext}"
+    }
   }
 }
