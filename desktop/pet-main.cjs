@@ -15,7 +15,7 @@ const {
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const title = "Somewhere, Over the Rainbow Bridge";
+const title = "내새꾸, 내곁에";
 const smoke =
   process.argv.includes("--pet-smoke") || process.argv.includes("--smoke");
 app.setPath(
@@ -154,7 +154,7 @@ function act(action) {
 }
 function items() {
   return [
-    { label: "터치 · Somewhere,", enabled: false },
+    { label: "터치 · 내새꾸, 내곁에", enabled: false },
     { type: "separator" },
     {
       label: visible ? "잠시 숨기기" : "터치 만나기",

@@ -15,7 +15,7 @@ const smoke = process.argv.includes("--smoke");
 if (process.env.ONGI_DATA_DIR)
   app.setPath("userData", path.resolve(process.env.ONGI_DATA_DIR));
 else app.setPath("userData", path.join(app.getPath("appData"), "Ongi Studio"));
-app.setName("Somewhere, Over the Rainbow Bridge");
+app.setName("내새꾸, 내곁에");
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "app",
@@ -112,7 +112,7 @@ else {
         minHeight: 740,
         show: !smoke,
         backgroundColor: "#f8f8f3",
-        title: "Somewhere, Over the Rainbow Bridge",
+        title: "내새꾸, 내곁에",
         autoHideMenuBar: true,
         webPreferences: {
           preload: path.join(__dirname, "preload.cjs"),

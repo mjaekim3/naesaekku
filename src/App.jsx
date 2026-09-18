@@ -253,12 +253,12 @@ export default function App({ initial = EMPTY }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand" aria-label="Somewhere, Over the Rainbow Bridge">
+        <div className="brand" aria-label="내새꾸, 내곁에">
           <div className="brand-mark">
             <Heart size={24} strokeWidth={1.7} />
           </div>
           <div>
-            Somewhere,<span>Over the Rainbow Bridge</span>
+            내새꾸,<span>내곁에</span>
           </div>
         </div>
         <div className="nav-label">OUR LITTLE WORLD</div>
@@ -301,7 +301,7 @@ export default function App({ initial = EMPTY }) {
           <Settings size={16} />
         </button>
         <div className="version">
-          Somewhere, <span>v0.1</span>
+          내새꾸, 내곁에 <span>v0.3.1</span>
         </div>
       </aside>
       <main>
