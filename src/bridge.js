@@ -13,6 +13,13 @@ export const bridge =
     ? window.ongi
     : {
         state: () => request("state"),
+        motionPrompt: (r) => request("motionPrompt", r),
+        copyMotionPrompt: async (r) => {
+          await navigator.clipboard.writeText(await request("motionPrompt", r));
+          return { copied: true };
+        },
+        prepareMotion: (r) => request("prepareMotion", r),
+        saveMotion: (r) => request("saveMotion", r),
         localStatus: () => request("localStatus"),
         startLocal: (r) => request("startLocal", r),
         chatPrompt: (r) => request("chatPrompt", r),

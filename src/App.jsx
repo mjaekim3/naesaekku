@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { bridge } from "./bridge.js";
 import PetPreview from "./PetPreview.jsx";
+import MotionWorkshop from "./MotionWorkshop.jsx";
 import { version } from "../package.json";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
 const Icon = ({ children }) => <span className="icon">{children}</span>;
@@ -435,13 +436,29 @@ export default function App({ initial = EMPTY }) {
           </div>
         </section>
         {page === "studio" && (
-          <section
+          <MotionWorkshop
+            name={name}
+            setName={setName}
+            features={features}
+            setFeatures={setFeatures}
+            style={style}
+            disabled={working || !!busy}
+            onSaved={async (item) => {
+              await refresh();
+              setSelected(item.id);
+              setPixel(false);
+              notify("확인한 동작을 보관함에 저장했어요.");
+            }}
+          />
+        )}
+        {page === "studio" && (
+          <details
             className="panel"
             style={{ margin: "0 0 24px", padding: 24 }}
           >
-            <h2 style={{ fontSize: 18, marginBottom: 12 }}>
-              이 PC에서 만들기 · 실험 기능
-            </h2>
+            <summary style={{ fontSize: 16 }}>
+              다른 방법: 이 PC에서 만들기 · 실험 기능
+            </summary>
             <p className="hint">
               아래에서 사진과 이름을 등록하면 Ollama가 특징을 읽고 ComfyUI가
               기본 모습과 동작을 그려요. API 키나 사용료 없이 이 PC에서
@@ -480,16 +497,16 @@ export default function App({ initial = EMPTY }) {
                 {localStatus.message}
               </p>
             )}
-          </section>
+          </details>
         )}
         {page === "studio" && (
-          <section
+          <details
             className="panel"
             style={{ margin: "0 0 24px", padding: 24 }}
           >
-            <h2 style={{ fontSize: 18, marginBottom: 12 }}>
-              ChatGPT로 만들기 · API 키 없이
-            </h2>
+            <summary style={{ fontSize: 16 }}>
+              기존 4×4 동작 시트 가져오기
+            </summary>
             <p className="hint">
               아래에 아이 이름·특징을 입력 → 프롬프트 복사 → ChatGPT에 원본
               사진을 직접 첨부하고 붙여넣기 → 완성된 PNG 가져오기
@@ -551,7 +568,7 @@ export default function App({ initial = EMPTY }) {
               정사각형 · 4×4칸 · 실제 투명 배경의 PNG가 필요해요. 일반 사진 한
               장은 동작 시트로 사용할 수 없어요.
             </p>
-          </section>
+          </details>
         )}
         <input
           ref={sheetFile}

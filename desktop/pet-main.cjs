@@ -578,6 +578,57 @@ else {
             return {preloadConnected:true, localReady:local.ready, localPanel:document.body.textContent.includes('이 PC에서 만들기'), imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
         })()`);
         let smokePetId = process.env.REGISTRATION_SMOKE_PET_ID;
+        if (process.env.MOTION_SMOKE_DIR) {
+          const sheets = {};
+          for (const action of ["walk", "idle", "sleep", "eat"])
+            sheets[action] = (
+              await fs.readFile(
+                path.join(process.env.MOTION_SMOKE_DIR, action + ".png"),
+              )
+            ).toString("base64");
+          const flow = await w.webContents.executeJavaScript(`(async()=>{
+            const wait=ms=>new Promise(r=>setTimeout(r,ms));
+            const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await wait(50);}throw Error('Motion UI timeout');};
+            const panel=document.querySelector('.motion-workshop');
+            if(!panel)throw Error('Motion workshop missing');
+            const name=panel.querySelector('input[aria-label="동작 준비 이름"]');
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(name,'동작 가져오기 검증');
+            name.dispatchEvent(new Event('input',{bubbles:true}));
+            await wait(100);
+            const sheets=${JSON.stringify(sheets)};
+            const labels={walk:'걷기',idle:'대기·깜빡임',sleep:'수면',eat:'먹기'};
+            for(const [action,label] of Object.entries(labels)) {
+              [...panel.querySelectorAll('button')].find(b=>b.textContent.startsWith(label+' ')).click();
+              await wait(100);
+              const input=panel.querySelector('input[type=file]');
+              const bytes=Uint8Array.from(atob(sheets[action]),c=>c.charCodeAt(0));
+              const transfer=new DataTransfer();transfer.items.add(new File([bytes],action+'.png',{type:'image/png'}));
+              input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));
+              await wait(100);
+              await until(()=>[...panel.querySelectorAll('button')].some(b=>b.textContent.includes(label+' 그림 가져오기')&&!b.disabled)&&panel.querySelectorAll('button[aria-label^="'+label+' 프레임"]').length===(action==='walk'?8:2));
+            }
+            const review=panel.querySelector('.consent input');
+            await until(()=>!review.disabled);review.click();
+            const save=[...panel.querySelectorAll('button')].find(b=>b.textContent.includes('보관함에 저장'));
+            await until(()=>!save.disabled);save.click();
+            await until(()=>panel.textContent.includes('아래 미리보기에서'));
+            const state=await window.ongi.state();
+            const item=state.artworks.find(a=>a.petName==='동작 가져오기 검증');
+            if(!item?.hasMotion)throw Error('Motion pack not saved');
+            return {id:item.id,reviewed:true,groups:4,prompt:(await window.ongi.motionPrompt({name:'터치',features:'흰 하트',style:'pixel',action:'walk'})).includes('RIGHT')};
+          })()`);
+          result.motionWorkflow = flow;
+          smokePetId = flow.id;
+          w.show();
+          await w.webContents.executeJavaScript(
+            `document.querySelector('img[alt="동작 정렬 미리보기"]').scrollIntoView({block:'center'})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          await fs.writeFile(
+            path.join(dir, "motion-workshop.png"),
+            (await w.webContents.capturePage()).toPNG(),
+          );
+        }
         if (process.env.MANUAL_SMOKE_SHEET) {
           const bytes = Array.from(
             await fs.readFile(process.env.MANUAL_SMOKE_SHEET),

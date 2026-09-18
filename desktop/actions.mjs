@@ -8,6 +8,15 @@ export function createActions({
 }) {
   return {
     state: () => studio.state(),
+    motionPrompt: (r) => studio.motionPrompt(r),
+    copyMotionPrompt: async (r) => {
+      const text = studio.motionPrompt(r);
+      if (!copyText) throw Error("아래 프롬프트를 직접 복사해주세요.");
+      await copyText(text);
+      return { copied: true };
+    },
+    prepareMotion: (r) => studio.prepareMotion(r),
+    saveMotion: (r) => studio.saveMotion(r),
     localStatus: () => studio.localStatus(),
     startLocal: (r) => studio.startLocal(r),
     chatPrompt: (r) => studio.chatPrompt(r),

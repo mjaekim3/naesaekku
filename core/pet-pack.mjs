@@ -90,9 +90,9 @@ export async function preparePetSheet(buffer) {
 export async function savePetPack(dir, id, name, sheet) {
   if (!validPackId(id)) throw Error("Invalid pet id");
   const pack = await preparePetSheet(sheet);
-  return savePreparedPetPack(dir,id,name,pack,sheet);
+  return savePreparedPetPack(dir, id, name, pack, sheet);
 }
-export async function savePreparedPetPack(dir,id,name,pack,sheet) {
+export async function savePreparedPetPack(dir, id, name, pack, sheet) {
   if (!validPackId(id)) throw Error("Invalid pet id");
   const parent = join(dir, "pets");
   await mkdir(parent, { recursive: true });

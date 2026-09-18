@@ -3,8 +3,17 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { normalize, thumbnail, pixelate, animate } from "./images.mjs";
 import { createRenderer, publicError, IMAGE_MODEL } from "./provider.mjs";
-import { savePetPack, savePreparedPetPack, loadPetPack, motionPrompt } from "./pet-pack.mjs";
-import { splitMotion, assembleMotion, motionGroupPrompt } from './motion-import.mjs';
+import {
+  savePetPack,
+  savePreparedPetPack,
+  loadPetPack,
+  motionPrompt,
+} from "./pet-pack.mjs";
+import {
+  splitMotion,
+  assembleMotion,
+  motionGroupPrompt,
+} from "./motion-import.mjs";
 import { LocalAI } from "./local-ai.mjs";
 
 const text = (v, max, required = false) =>
@@ -177,26 +186,46 @@ export class Studio {
     await this.save();
     return item;
   }
-  motionPrompt(r) { return motionGroupPrompt(r); }
+  motionPrompt(r) {
+    return motionGroupPrompt(r);
+  }
   async prepareMotion(r) {
     this.validateFile(r?.file);
-    const frames=await splitMotion(Buffer.from(r.file.bytes),r.action,r.background);
-    return frames.map(f=>'data:image/png;base64,'+f.toString('base64'));
+    const frames = await splitMotion(
+      Buffer.from(r.file.bytes),
+      r.action,
+      r.background,
+    );
+    return frames.map((f) => "data:image/png;base64," + f.toString("base64"));
   }
   async saveMotion(r) {
-    if(!r || !text(r.name,40,true) || r.reviewed!==true) throw Error('이름을 입력하고 걷기 방향·프레임 순서를 확인해주세요.');
-    if(this.active) throw Error('진행 중인 생성을 먼저 마쳐주세요.');
-    this.active='assembling';
+    if (!r || !text(r.name, 40, true) || r.reviewed !== true)
+      throw Error("이름을 입력하고 걷기 방향·프레임 순서를 확인해주세요.");
+    if (this.active) throw Error("진행 중인 생성을 먼저 마쳐주세요.");
+    this.active = "assembling";
     try {
-      const pack=await assembleMotion(r.groups);
-      const id=randomUUID();
-      await savePreparedPetPack(this.dir,id,r.name,pack,pack.sheet);
-      await writeFile(join(this.dir,'assets',id+'.png'),pack.frames[4]);
-      const item={id,name:r.name+' · 확인한 동작',petName:r.name,source:'imported',mode:'pet',hasMotion:true,createdAt:new Date().toISOString(),thumbnail:'data:image/png;base64,'+(await thumbnail(pack.frames[4])).toString('base64')};
+      const pack = await assembleMotion(r.groups);
+      const id = randomUUID();
+      await savePreparedPetPack(this.dir, id, r.name, pack, pack.sheet);
+      await writeFile(join(this.dir, "assets", id + ".png"), pack.frames[4]);
+      const item = {
+        id,
+        name: r.name + " · 확인한 동작",
+        petName: r.name,
+        source: "imported",
+        mode: "pet",
+        hasMotion: true,
+        createdAt: new Date().toISOString(),
+        thumbnail:
+          "data:image/png;base64," +
+          (await thumbnail(pack.frames[4])).toString("base64"),
+      };
       this.data.artworks.unshift(item);
       await this.save();
       return item;
-    } finally {this.active=null;}
+    } finally {
+      this.active = null;
+    }
   }
   async state() {
     return {

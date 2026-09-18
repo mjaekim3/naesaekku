@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 const api = {};
 for (const method of [
   "state",
+  "motionPrompt",
+  "copyMotionPrompt",
+  "prepareMotion",
+  "saveMotion",
   "localStatus",
   "startLocal",
   "chatPrompt",
