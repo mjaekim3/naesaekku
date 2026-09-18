@@ -1,6 +1,14 @@
-export function createActions({ studio, setKey, saveFile }) {
+export function createActions({ studio, setKey, saveFile, activatePet }) {
   return {
     state: () => studio.state(),
+    petFrames: (id) => studio.petFrames(id),
+    activatePet: async (id) => {
+      if (!studio.find(id).hasMotion)
+        throw Error("먼저 움직임을 만들어주세요.");
+      if (!activatePet) throw Error("데스크톱 앱에서 사용할 수 있어요.");
+      await activatePet(id);
+      return { activated: true };
+    },
     importPhotos: (files) => studio.importPhotos(files),
     importArtwork: (file) => studio.importArtwork(file),
     asset: async (id) => {

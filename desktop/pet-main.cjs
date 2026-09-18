@@ -55,6 +55,9 @@ const root = path.resolve(__dirname, "../dist");
 const dir = app.getPath("userData");
 let updates;
 let registration;
+let currentPack = null;
+let changePet;
+const petName = () => currentPack?.manifest.name || "터치";
 const registrationSmoke = process.argv.includes("--registration-smoke");
 async function openRegistration() {
   try {
@@ -108,7 +111,10 @@ function updateLabel() {
   );
 }
 function save() {
-  const value = JSON.stringify(model.snapshot());
+  const value = JSON.stringify({
+    ...model.snapshot(),
+    petId: currentPack?.manifest.id || null,
+  });
   saveChain = saveChain
     .catch(() => {})
     .then(async () => {
@@ -166,11 +172,16 @@ function act(action) {
 }
 function items() {
   return [
-    { label: "터치 · 내새꾸, 내곁에", enabled: false },
+    { label: `${petName()} · 내새꾸, 내곁에`, enabled: false },
     { type: "separator" },
     { label: "내새꾸 등록하기 · 사진으로 만들기", click: openRegistration },
     {
-      label: visible ? "잠시 숨기기" : "터치 만나기",
+      label: "기본 터치로 돌아가기",
+      visible: !!currentPack,
+      click: () => changePet(null).catch(() => {}),
+    },
+    {
+      label: visible ? "잠시 숨기기" : `${petName()} 만나기`,
       click: () => (visible ? hide() : show()),
     },
     {
@@ -230,7 +241,7 @@ function items() {
       enabled: !["checking", "downloading"].includes(updates?.status.state),
       click: () => updateAction().catch(() => {}),
     },
-    { label: `버전 ${app.getVersion()} · 터치 시제품`, enabled: false },
+    { label: `버전 ${app.getVersion()}`, enabled: false },
     { label: "종료", click: () => app.quit() },
   ];
 }
@@ -284,13 +295,33 @@ else {
         y: saved.y,
         roaming: saved.roaming,
       });
-      const masks = await fs.readFile(path.join(root, "pet/alpha.bin"));
+      let masks = await fs.readFile(path.join(root, "pet/alpha.bin"));
+      const { loadPetPack, validPackId } = await import("../core/pet-pack.mjs");
+      if (saved.petId) {
+        try {
+          currentPack = await loadPetPack(dir, saved.petId);
+          masks = currentPack.alpha;
+        } catch {
+          currentPack = null;
+        }
+      }
       if (masks.length !== FRAME_COUNT * 192 * 192)
         throw Error("Invalid sprite alpha masks");
       protocol.handle("app", (request) => {
         const url = new URL(request.url);
         if (!["pet", "ongi"].includes(url.host))
           return new Response("Forbidden", { status: 403 });
+        if (url.pathname.startsWith("/packs/")) {
+          const match = /^\/packs\/([a-f0-9-]{36})\/(\d{1,2})\.png$/.exec(
+            url.pathname,
+          );
+          if (!match || !validPackId(match[1]) || Number(match[2]) >= 20)
+            return new Response("Forbidden", { status: 403 });
+          return net.fetch(
+            pathToFileURL(path.join(dir, "pets", match[1], match[2] + ".png"))
+              .href,
+          );
+        }
         let file;
         try {
           file = path.resolve(root, "." + decodeURIComponent(url.pathname));
@@ -306,11 +337,27 @@ else {
       );
       session.defaultSession.setPermissionCheckHandler(() => false);
       const { createRegistration } = await import("./registration.mjs");
+      changePet = async (id) => {
+        const pack = id ? await loadPetPack(dir, id) : null;
+        const nextMasks =
+          pack?.alpha || (await fs.readFile(path.join(root, "pet/alpha.bin")));
+        if (model.state === "drag") model.endDrag();
+        currentPack = pack;
+        masks = nextMasks;
+        model.act("wake");
+        ready = false;
+        lastView = "";
+        await save();
+        tray.setToolTip(title + " · " + petName());
+        await pet.loadURL("app://pet/pet.html");
+        show();
+      };
       registration = createRegistration({
         electron: require("electron"),
         dir,
         preload: path.join(__dirname, "preload.cjs"),
         icon: path.join(__dirname, "../assets/icon.png"),
+        activatePet: changePet,
       });
       pet = new BrowserWindow({
         width: 220,
@@ -357,7 +404,12 @@ else {
       ipcMain.handle("pet:ready", (e) => {
         if (!trusted(e)) throw Error("Forbidden");
         ready = true;
-        return { view: model.view() };
+        return {
+          view: model.view(),
+          spriteBase: currentPack
+            ? `app://pet/packs/${currentPack.manifest.id}/`
+            : "./pet/",
+        };
       });
       ipcMain.on("pet:drag-start", (e) => {
         if (!trusted(e) || !visible || menuOpen) return;
@@ -422,7 +474,7 @@ else {
           .createFromPath(path.join(__dirname, "../assets/icon.png"))
           .resize({ width: 24, height: 24 }),
       );
-      tray.setToolTip(title + " · 터치");
+      tray.setToolTip(title + " · " + petName());
       tray.on("click", () => (visible ? hide() : show()));
       refreshTray();
       function loop() {
@@ -524,6 +576,39 @@ else {
           const after = await window.ongi.state();
           return {preloadConnected:true, imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
         })()`);
+        if (process.env.REGISTRATION_SMOKE_PET_ID) {
+          const id = process.env.REGISTRATION_SMOKE_PET_ID;
+          result.activation = await w.webContents.executeJavaScript(
+            `window.ongi.activatePet(${JSON.stringify(id)})`,
+          );
+          result.frames = (
+            await w.webContents.executeJavaScript(
+              `window.ongi.petFrames(${JSON.stringify(id)})`,
+            )
+          ).length;
+          result.petId = currentPack?.manifest.id;
+          result.rendered = await pet.webContents.executeJavaScript(
+            'document.querySelector("#pet").dataset.state',
+          );
+          result.saved = JSON.parse(
+            await fs.readFile(path.join(dir, "pet-state.json"), "utf8"),
+          ).petId;
+          result.previewLoaded=await w.webContents.executeJavaScript(`new Promise(resolve => {
+            const started=Date.now();const timer=setInterval(()=>{
+              const image=document.querySelector('img[alt="생성된 동작 미리보기"]');
+              if(image?.naturalWidth){clearInterval(timer);resolve(true);}
+              else if(Date.now()-started>5000){clearInterval(timer);resolve(false);}
+            },50);
+          })`);
+          await fs.writeFile(
+            path.join(dir, "registration-preview.png"),
+            (await w.webContents.capturePage()).toPNG(),
+          );
+          await fs.writeFile(
+            path.join(dir, "active-pet.png"),
+            (await pet.webContents.capturePage()).toPNG(),
+          );
+        }
         await fs.writeFile(
           path.join(dir, "registration-smoke.json"),
           JSON.stringify(result, null, 2),
@@ -537,7 +622,7 @@ else {
         show();
         pet.webContents.send(
           "pet:message",
-          "터치예요. 드래그로 원하는 화면에 놓아주세요.",
+          `${petName()}예요. 드래그로 원하는 화면에 놓아주세요.`,
         );
         loop();
       } else smokeTimeout = setTimeout(() => app.exit(2), 15000);

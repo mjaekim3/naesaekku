@@ -3,6 +3,8 @@ import { PetModel, FRAME_COUNT } from "../core/pet.mjs";
 const canvas = document.querySelector("#pet"),
   ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
+const api = window.petDesktop;
+const config = api ? await api.ready() : null;
 const frames = await Promise.all(
   Array.from(
     { length: FRAME_COUNT },
@@ -11,7 +13,7 @@ const frames = await Promise.all(
         const image = new Image();
         image.onload = () => resolve(image);
         image.onerror = reject;
-        image.src = `./pet/${i}.png`;
+        image.src = `${config?.spriteBase || "./pet/"}${i}.png`;
       }),
   ),
 );
@@ -54,11 +56,9 @@ function bubble(text) {
   bubbleTimer = setTimeout(() => message.classList.remove("visible"), 3000);
 }
 draw(view);
-const api = window.petDesktop;
 if (api) {
   api.onView(draw);
   api.onMessage(bubble);
-  const config = await api.ready();
   draw(config.view);
   api.painted({ frames: frames.length, state: view.state });
   canvas.addEventListener("pointerdown", (e) => {

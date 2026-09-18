@@ -42,3 +42,10 @@ Coverage numbers apply to core/gateway modules, not full UI interaction coverage
 - `test-results/registration/registration-smoke.json`: 실제 Electron 등록 창에서 터치 원본 JPEG를 preload IPC로 읽고 정규화하여 보관함 저장 및 조회 성공(0→1). 외부 API 호출 없이 수행.
 - 유료 생성 경로는 기존 provider mock 테스트로 검증되며, 실제 OpenAI API 키를 사용한 요청은 수행하지 않음.
 - 전체 커버리지 수치는 core/server 범위이며 Electron 윈도우 코드는 해당 집계에 포함되지 않음.
+# v0.5.0 자동 동작 파이프라인
+
+- 34개 테스트 통과, core/server statements 95.39%, branches 89.93%.
+- 사진→기본 그림→동작 시트 2회 호출, 20개 프레임/알파 마스크 생성, 재시작 후 보관함 로딩, 불투명·빈 시트 거절, 취소 시 후속 호출 중단, 동작 실패 시 기본 그림 보존과 동작만 재시도 검증.
+- `scripts/seed-pipeline-smoke.mjs`는 기존 터치 아트로 만든 오프라인 응답만 사용합니다. 실제 AI 생성 결과가 아닙니다.
+- `test-results/pipeline/registration-smoke.json`에서 실제 renderer IPC로 동작 20개 조회, 바탕화면 교체, idle 렌더링 및 선택 저장을 확인했습니다.
+- 실제 OpenAI 키로 유료 생성 및 생성된 그림의 동작 품질은 미검증. 자동 시트 형식 검증은 의미상 올바른 걸음/닮음을 보장하지 않습니다.

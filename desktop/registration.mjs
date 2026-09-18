@@ -8,6 +8,7 @@ export function createRegistration({
   preload,
   icon,
   openStudio,
+  activatePet,
   onState = () => {},
 }) {
   const { BrowserWindow, ipcMain, safeStorage, dialog } = electron;
@@ -32,6 +33,7 @@ export function createRegistration({
     studio = await factory({ dir, getKey: () => sessionKey });
     const actions = createActions({
       studio,
+      activatePet,
       setKey: async ({ key, remember }) => {
         if (remember && key) {
           if (!safeStorage.isEncryptionAvailable())

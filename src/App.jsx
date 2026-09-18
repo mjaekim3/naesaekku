@@ -22,6 +22,7 @@ import {
   FolderHeart,
 } from "lucide-react";
 import { bridge } from "./bridge.js";
+import PetPreview from "./PetPreview.jsx";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
 const Icon = ({ children }) => <span className="icon">{children}</span>;
 export default function App({ initial = EMPTY }) {
@@ -128,6 +129,7 @@ export default function App({ initial = EMPTY }) {
       polling.current = true;
       try {
         const j = await bridge.job(busy.id);
+        if (j?.status === "running" && j.stage !== busy.stage) setBusy(j);
         if (j && j.status !== "running") {
           setBusy(null);
           if (j.status === "complete") {
@@ -138,8 +140,11 @@ export default function App({ initial = EMPTY }) {
                 ? "눈 깜빡임 프레임이 준비됐어요. 재생해서 확인해주세요."
                 : "새로운 모습이 보관함에 저장됐어요.",
             );
-          } else if (j.status === "error") setError(j.error);
-          else
+          } else if (j.status === "error") {
+            setError(j.error);
+            await refresh();
+            if (j.masterId) setSelected(j.masterId);
+          } else
             notify(
               "요청을 취소했어요. 이미 처리된 요청에는 비용이 발생할 수 있어요.",
             );
@@ -303,7 +308,7 @@ export default function App({ initial = EMPTY }) {
           <Settings size={16} />
         </button>
         <div className="version">
-          내새꾸, 내곁에 <span>v0.4.0</span>
+          내새꾸, 내곁에 <span>v0.5.0</span>
         </div>
       </aside>
       <main>
@@ -562,17 +567,19 @@ export default function App({ initial = EMPTY }) {
               <button
                 className="primary generate"
                 disabled={!ready}
-                onClick={() => start("generate")}
+                onClick={() => start("pet")}
               >
                 {busy ? (
                   <LoaderCircle className="spin" size={18} />
                 ) : (
                   <Sparkles size={18} />
                 )}
-                우리 아이 모습 만들기
+                움직이는 내새꾸 만들기
                 <ArrowRight size={16} />
               </button>
-              <p className="cost-note">한 번에 1장 생성 · API 사용료 별도</p>
+              <p className="cost-note">
+                기본 모습 + 동작 시트 · 최대 2회 이미지 요청 · API 사용료 별도
+              </p>
             </section>
             <section className="result-panel">
               <div className="panel canvas-panel">
@@ -601,7 +608,9 @@ export default function App({ initial = EMPTY }) {
                   <div className="stage-orbit orbit-two" />
                   <span className="stage-spark spark-one">✧</span>
                   <span className="stage-spark spark-two">✧</span>
-                  {view ? (
+                  {artwork?.hasMotion ? (
+                    <PetPreview id={selected} />
+                  ) : view ? (
                     <img
                       className="pet-art"
                       src={playing && closed && blinkView ? blinkView : view}
@@ -625,11 +634,12 @@ export default function App({ initial = EMPTY }) {
                     <div className="generation-overlay">
                       <LoaderCircle className="spin" size={28} />
                       <strong>
-                        {busy.mode === "blink"
-                          ? "살짝 눈을 감는 중이에요"
-                          : busy.mode === "refine"
-                            ? "원하는 모습으로 다듬고 있어요"
-                            : "사진 속 모습을 그리고 있어요"}
+                        {busy.stage ||
+                          (busy.mode === "blink"
+                            ? "살짝 눈을 감는 중이에요"
+                            : busy.mode === "refine"
+                              ? "원하는 모습으로 다듬고 있어요"
+                              : "사진 속 모습을 그리고 있어요")}
                       </strong>
                       <p>{elapsed}초 경과 · 창을 닫지 말아주세요</p>
                       <button onClick={() => bridge.cancel(busy.id)}>
@@ -654,6 +664,27 @@ export default function App({ initial = EMPTY }) {
                   </span>
                 </div>
                 <div className="canvas-actions">
+                  {artwork?.hasMotion && (
+                    <button
+                      className="primary"
+                      disabled={working || !!busy}
+                      onClick={async () => {
+                        setWorking(true);
+                        try {
+                          await bridge.activatePet(selected);
+                          notify(
+                            "바탕화면에 데려왔어요. 등록 창을 닫아도 함께 있어요.",
+                          );
+                        } catch (e) {
+                          setError(e.message);
+                        } finally {
+                          setWorking(false);
+                        }
+                      }}
+                    >
+                      바탕화면에 데려오기
+                    </button>
+                  )}
                   <button
                     className="outline-button"
                     disabled={!blink || pixel || !!busy}
@@ -706,6 +737,19 @@ export default function App({ initial = EMPTY }) {
                     <ArrowUpRight size={15} />
                   </button>
                 </div>
+                <button
+                  className="blink-button"
+                  disabled={!editReady}
+                  onClick={() => start("motion")}
+                >
+                  <Sparkles size={21} />
+                  <span>
+                    <strong>이 모습으로 동작 만들기</strong>
+                    <small>
+                      걷기·대기·수면·간식 · 이미지 요청 1회, 별도 과금
+                    </small>
+                  </span>
+                </button>
                 <button
                   className="blink-button"
                   disabled={!editReady}

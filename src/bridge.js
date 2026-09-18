@@ -13,6 +13,8 @@ export const bridge =
     ? window.ongi
     : {
         state: () => request("state"),
+        petFrames: (id) => request("petFrames", id),
+        activatePet: (id) => request("activatePet", id),
         importPhotos: (files) => request("importPhotos", files),
         importArtwork: (f) => request("importArtwork", f),
         asset: (id) => request("asset", id),
