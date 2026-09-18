@@ -4,6 +4,7 @@
 
 - 23 tests passed. Core/gateway statements 95.37%, branches 89.13%; pet model statements 100%, branches 98.38%.
 - Native Electron smoke loaded all 12 frames and acknowledged idle/walk/eat/sleep/happy from the real renderer.
+- Windows v0.2 packaging completed successfully; the packaged executable passed the same native smoke test. Captured transparent corner alpha was 0.
 - Both attached displays exercised: portrait 1080×1920 at negative X, landscape 2560×1440, both scale 1. Work-area positioning matched native window bounds.
 - Browser visual interaction confirmed sleep and feeding on the same renderer and assets. Frame boundaries and foot baselines were normalized to remove neighboring-row leakage.
 - Default startup is one 220×230 transparent always-on-top pet window plus tray, no studio window. Alpha masks are generated with the artwork and checked in the main process for click-through.
