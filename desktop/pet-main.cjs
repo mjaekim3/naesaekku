@@ -54,6 +54,18 @@ let pet,
 const root = path.resolve(__dirname, "../dist");
 const dir = app.getPath("userData");
 let updates;
+let registration;
+const registrationSmoke = process.argv.includes("--registration-smoke");
+async function openRegistration() {
+  try {
+    await registration.open();
+  } catch {
+    dialog.showErrorBox(
+      title,
+      "사진 등록 화면을 열지 못했어요. 앱을 다시 시작해주세요.",
+    );
+  }
+}
 async function updateAction() {
   const state = updates.status.state;
   if (state === "unconfigured") {
@@ -156,6 +168,7 @@ function items() {
   return [
     { label: "터치 · 내새꾸, 내곁에", enabled: false },
     { type: "separator" },
+    { label: "내새꾸 등록하기 · 사진으로 만들기", click: openRegistration },
     {
       label: visible ? "잠시 숨기기" : "터치 만나기",
       click: () => (visible ? hide() : show()),
@@ -226,7 +239,11 @@ function refreshTray() {
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    if (argv.includes("--studio") && registration) {
+      openRegistration();
+      return;
+    }
     if (pet) show();
   });
   app
@@ -272,7 +289,7 @@ else {
         throw Error("Invalid sprite alpha masks");
       protocol.handle("app", (request) => {
         const url = new URL(request.url);
-        if (url.host !== "pet")
+        if (!["pet", "ongi"].includes(url.host))
           return new Response("Forbidden", { status: 403 });
         let file;
         try {
@@ -288,6 +305,13 @@ else {
         cb(false),
       );
       session.defaultSession.setPermissionCheckHandler(() => false);
+      const { createRegistration } = await import("./registration.mjs");
+      registration = createRegistration({
+        electron: require("electron"),
+        dir,
+        preload: path.join(__dirname, "preload.cjs"),
+        icon: path.join(__dirname, "../assets/icon.png"),
+      });
       pet = new BrowserWindow({
         width: 220,
         height: 230,
@@ -491,6 +515,24 @@ else {
         }
       });
       await pet.loadURL("app://pet/pet.html");
+      if (registrationSmoke) {
+        const w = await registration.open({ hidden: true });
+        const photo = await fs.readFile(process.env.REGISTRATION_SMOKE_PHOTO);
+        const result = await w.webContents.executeJavaScript(`(async () => {
+          const before = await window.ongi.state();
+          const imported = await window.ongi.importPhotos([{name:'smoke-photo.jpg', bytes:${JSON.stringify(Array.from(photo))}}]);
+          const after = await window.ongi.state();
+          return {preloadConnected:true, imported:imported.length, before:before.photos.length, after:after.photos.length, keyExposed:Object.hasOwn(after,'apiKey'), title:document.title};
+        })()`);
+        await fs.writeFile(
+          path.join(dir, "registration-smoke.json"),
+          JSON.stringify(result, null, 2),
+        );
+        registration.allowQuit();
+        app.quit();
+        return;
+      }
+      if (process.argv.includes("--studio")) await openRegistration();
       if (!smoke) {
         show();
         pet.webContents.send(
@@ -512,6 +554,7 @@ else {
   app.on("before-quit", (event) => {
     if (quitting) return;
     quitting = true;
+    registration?.allowQuit();
     clearTimeout(timer);
     clearTimeout(smokeTimeout);
     if (model) {
