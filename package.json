@@ -1,6 +1,6 @@
 {
   "name": "ongi-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "desktop/main.cjs",
@@ -9,6 +9,7 @@
   "scripts": {
     "build": "vite build",
     "start": "electron .",
+    "studio": "electron . --studio",
     "dev": "vite --host 127.0.0.1",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -34,6 +35,7 @@
   "build": {
     "appId": "local.ongi.studio",
     "productName": "Somewhere, Over the Rainbow Bridge",
+    "compression": "normal",
     "directories": {
       "output": "release"
     },
