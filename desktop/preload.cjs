@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 const api = {};
 for (const method of [
   "state",
+  "chatPrompt",
+  "copyChatPrompt",
+  "openChatGPT",
+  "importPetSheet",
   "petFrames",
   "activatePet",
   "importPhotos",
