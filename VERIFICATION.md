@@ -36,3 +36,9 @@ Coverage numbers apply to core/gateway modules, not full UI interaction coverage
 - 패키지 실행 smoke: `test-results/prototype-v030/pet-smoke.json`, 종료 코드 0, 프레임 20개, idle/walk/eat/sleep/happy 렌더링, 연결된 두 모니터의 위치와 선택 ID 일치.
 - 업데이트 컨트롤러: 배포 미설정 시 네트워크 미사용, 명시적 다운로드/설치, 오류 후 재시도 검증. 온라인 GitHub 다운로드·버전 교체 및 설치 마법사의 실제 설치/제거는 미검증.
 - GitHub 원격 연결/게시 없음. 이번 로컬 빌드에서는 업데이트 미설정 안내를 표시함.
+# v0.4.0 사진 등록 연결
+
+- 31개 테스트 통과. 등록 창 재사용, 닫은 뒤 재개, 발신 창 검증, 허용되지 않은 IPC 차단을 추가 검증.
+- `test-results/registration/registration-smoke.json`: 실제 Electron 등록 창에서 터치 원본 JPEG를 preload IPC로 읽고 정규화하여 보관함 저장 및 조회 성공(0→1). 외부 API 호출 없이 수행.
+- 유료 생성 경로는 기존 provider mock 테스트로 검증되며, 실제 OpenAI API 키를 사용한 요청은 수행하지 않음.
+- 전체 커버리지 수치는 core/server 범위이며 Electron 윈도우 코드는 해당 집계에 포함되지 않음.

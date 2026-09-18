@@ -224,7 +224,7 @@ export default function App({ initial = EMPTY }) {
       await refresh();
       setSettings(false);
       notify(
-        "API 키가 연결됐어요. 생성 버튼을 누르면 이미지 요청이 전송됩니다.",
+        "API 키를 저장했어요. 생성 버튼을 누르면 연결을 확인하고 이미지를 요청합니다.",
       );
     } catch (e) {
       setError(e.message);
@@ -268,7 +268,7 @@ export default function App({ initial = EMPTY }) {
             onClick={() => setPage("studio")}
           >
             <Sparkles size={18} />
-            캐릭터 만들기
+            내새꾸 등록하기
             <span className="nav-dot" />
           </button>
           <button
@@ -282,9 +282,9 @@ export default function App({ initial = EMPTY }) {
         <div className="side-poem">
           <Flower2 size={30} strokeWidth={1} />
           <p>
-            함께했던 모든 순간이
+            함께하는 모든 순간이
             <br />
-            작은 온기로 남도록.
+            조금 더 포근하도록.
           </p>
           <span>ALWAYS, BY YOUR SIDE.</span>
         </div>
@@ -293,15 +293,17 @@ export default function App({ initial = EMPTY }) {
             className={data.hasKey ? "status-dot connected" : "status-dot"}
           />
           <div>
-            {data.hasKey ? "AI 연결됨" : "API 연결 필요"}
+            {data.hasKey ? "API 키 저장됨" : "API 연결 필요"}
             <small>
-              {data.hasKey ? "이미지 생성 준비 완료" : "설정에서 연결해주세요"}
+              {data.hasKey
+                ? "생성할 때 연결을 확인해요"
+                : "설정에서 연결해주세요"}
             </small>
           </div>
           <Settings size={16} />
         </button>
         <div className="version">
-          내새꾸, 내곁에 <span>v0.3.1</span>
+          내새꾸, 내곁에 <span>v0.4.0</span>
         </div>
       </aside>
       <main>
@@ -331,7 +333,7 @@ export default function App({ initial = EMPTY }) {
               <h1>
                 {page === "studio" ? (
                   <>
-                    작은 모습으로, <em>다시 곁에.</em>
+                    사진 속 내새꾸, <em>내 화면에.</em>
                   </>
                 ) : (
                   "우리의 모습을 모아두는 곳."
@@ -761,7 +763,7 @@ export default function App({ initial = EMPTY }) {
             <p>
               개인용 OpenAI API 키를 연결해주세요.
               <br />
-              생성 요청에 따라 API 사용료가 발생합니다.
+              ChatGPT 구독과 별도로 API 사용료가 발생합니다.
             </p>
             <label className="field-label" htmlFor="api-key">
               OpenAI API 키
