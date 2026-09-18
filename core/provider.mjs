@@ -32,6 +32,7 @@ export function createRenderer(
   };
 }
 export function publicError(error) {
+  if (error?.message === 'SPRITE_LAYOUT') return '동작 그림의 칸 배치나 투명 배경이 맞지 않아 적용하지 않았어요. 기본 모습은 보관함에 남아 있어요. 기본 그림을 선택해 동작만 다시 만들 수 있어요(추가 API 비용).';
   if (error?.name === "AbortError")
     return "요청을 취소했습니다. 이미 처리된 요청에는 비용이 발생할 수 있어요.";
   if (error?.status === 401)

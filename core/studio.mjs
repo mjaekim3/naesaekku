@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { normalize, thumbnail, pixelate, animate } from "./images.mjs";
 import { createRenderer, publicError, IMAGE_MODEL } from "./provider.mjs";
+import { savePetPack, loadPetPack, motionPrompt } from './pet-pack.mjs';
 
 const text = (v, max, required = false) =>
   typeof v === "string" &&
@@ -144,7 +145,7 @@ export class Studio {
       !text(r.features, 2000) ||
       !["pixel", "storybook"].includes(r.style) ||
       !["low", "medium", "high"].includes(r.quality) ||
-      !["generate", "refine", "blink"].includes(r.mode)
+      !["generate", "refine", "blink", "pet", "motion"].includes(r.mode)
     )
       throw new Error("이름, 특징과 생성 옵션을 확인해주세요.");
     if (r.consent !== true)
@@ -158,10 +159,10 @@ export class Studio {
     for (const id of r.photoIds)
       if (!this.data.photos.some((p) => p.id === id))
         throw new Error("선택한 사진을 찾을 수 없습니다.");
-    if (r.mode === "generate" && !r.photoIds.length)
+    if (["generate", "pet"].includes(r.mode) && !r.photoIds.length)
       throw new Error("참고 사진을 먼저 선택해주세요.");
     if (
-      r.mode !== "generate" &&
+      !["generate", "pet"].includes(r.mode) &&
       !this.data.artworks.some((a) => a.id === r.baseId)
     )
       throw new Error("기준 그림을 먼저 선택해주세요.");
@@ -182,9 +183,11 @@ export class Studio {
       this.data.attempts = this.data.attempts.filter((t) =>
         t.startsWith(today),
       );
-      if (this.data.attempts.length >= 20)
+      const requests = r.mode === 'pet' ? 2 : 1;
+      if (this.data.attempts.length + requests > 20)
         throw new Error("오늘의 생성 한도 20회에 도달했습니다.");
       this.data.attempts.push(new Date().toISOString());
+      if (requests === 2) this.data.attempts.push(new Date().toISOString());
       await this.save();
       const id = randomUUID();
       const job = {
@@ -218,6 +221,10 @@ export class Studio {
   }
   async run(j, r, apiKey) {
     try {
+      if (['pet','motion'].includes(r.mode)) {
+        await this.runPet(j,r,apiKey);
+        return;
+      }
       const ids =
         r.mode === "generate" ? r.photoIds : [r.baseId, ...r.photoIds];
       const images = await Promise.all(ids.map((id) => this.bytes(id)));
@@ -258,6 +265,36 @@ export class Studio {
       if (this.active === j.id) this.active = null;
       j.finishedAt = Date.now();
     }
+  }
+  async runPet(j,r,apiKey) {
+    const signal=j.controller.signal;
+    const photos=await Promise.all(r.photoIds.map(id=>this.bytes(id)));
+    let master;
+    if(r.mode==='pet') {
+      j.stage='캐릭터 모습 생성 중 · 1/3';
+      const result=await this.render({images:photos,prompt:buildPrompt({...r,mode:'generate'}),quality:r.quality,apiKey,signal});
+      if(signal.aborted)return;
+      master=await this.put(await normalize(result.buffer),{name:r.name+' · 기본 모습',petName:r.name,source:'generated',mode:'generate',style:r.style,usage:result.usage||null},'artworks');
+      await this.save();
+      j.masterId=master.id;
+    } else master=this.find(r.baseId);
+    j.stage='걷기·대기·수면·간식 동작 생성 중 · 2/3';
+    const result=await this.render({images:[await this.bytes(master.id),...photos],prompt:motionPrompt(r.name),quality:r.quality,apiKey,signal});
+    if(signal.aborted)return;
+    j.stage='프레임 정렬 및 투명 영역 검사 중 · 3/3';
+    const id=randomUUID();
+    await savePetPack(this.dir,id,r.name,result.buffer);
+    if(signal.aborted)return;
+    const buffer=await this.bytes(master.id);
+    await writeFile(join(this.dir,'assets',id+'.png'),buffer);
+    const item={id,name:r.name+' · 움직이는 내새꾸',petName:r.name,source:'generated',mode:'pet',hasMotion:true,parentId:master.id,style:r.style,createdAt:new Date().toISOString(),thumbnail:master.thumbnail};
+    this.data.artworks.unshift(item);await this.save();
+    j.artworkId=id;j.status='complete';
+  }
+  async petFrames(id) {
+    if(!this.find(id).hasMotion) throw Error('먼저 움직임을 만들어주세요.');
+    const pack=await loadPetPack(this.dir,id);
+    return Promise.all(Array.from({length:20},async (_,i)=>'data:image/png;base64,'+(await readFile(join(pack.root,i+'.png'))).toString('base64')));
   }
   async export(id, format, blinkId) {
     const base = await this.bytes(id);
