@@ -1,0 +1,61 @@
+# 온기 스튜디오 · Ongi Studio
+
+Windows에서 반려동물 사진을 참고해 캐릭터를 생성하고, 수정하고, 눈 깜빡임을 만들어 저장하는 개인용 데스크탑 MVP입니다.
+
+## 실행
+
+`release/Ongi-Studio.exe`를 실행하세요. Node.js 설치 없이 실행되는 Windows x64 포터블 앱입니다.
+설정에서 본인 OpenAI API 키를 연결한 뒤 사진을 선택하고 생성합니다.
+API 사용료는 본인의 API 계정에 청구되며, ChatGPT 이용권과 별개입니다.
+키가 없으면 사진 가져오기, 기존 그림 보관, 픽셀 PNG 및 이미 준비된 프레임의 GIF 내보내기를 사용할 수 있습니다.
+
+## 동작
+
+- JPG, PNG, WebP 사진 최대 5장을 참고 이미지로 전달합니다. 한 장당 20MB 제한, 실제 이미지 디코딩 검증, 메타데이터 제거를 적용합니다.
+- `gpt-image-2.5-sunburst`의 Images Edits API를 사용합니다. 캐릭터 생성, 선택한 원본 수정, 눈 깜빡임 프레임 생성이 각각 별도의 유료 요청입니다.
+- 매 요청 전 사진 전송 동의가 필요하고, 한 번에 한 요청만 처리합니다. 자동 재시도하지 않으며 하루 20회로 제한합니다.
+- 생성된 PNG와 참고 사진, 사용량 정보는 `%APPDATA%/Ongi Studio`에 저장합니다. 데이터 폴더를 백업하면 보관함을 보존할 수 있습니다.
+- API 키는 Electron 메인 프로세스에서만 사용합니다. 저장을 선택하면 Windows 사용자 계정의 암호화 저장소를 통해 암호화됩니다. 화면이나 보관함에는 키를 반환하지 않습니다.
+- 결과를 원본 PNG, 128×128 팔레트 PNG, 눈 깜빡임 GIF로 내보낼 수 있습니다.
+- AI는 프레임 사이의 외형 일치를 보장하지 않습니다. 재생 화면에서 얼굴과 털 무늬가 유지됐는지 확인해주세요.
+- 가져온 그림에는 ‘가져온 그림’ 표시를 붙입니다. 이전 시안은 이 앱에서 새로 생성한 결과로 표시하지 않습니다.
+
+## 개발
+
+Node.js 24 이상을 사용합니다.
+
+```powershell
+npm.cmd ci
+node node_modules/electron/install.js
+npm.cmd test
+npm.cmd run test:coverage
+npm.cmd run build
+npm.cmd start
+```
+
+패키징:
+
+```powershell
+node scripts/icon.mjs
+npm.cmd run dist
+```
+
+`ONGI_DATA_DIR`로 데이터 저장 위치를 바꿀 수 있습니다. `.env`를 앱에 포함하지 마세요.
+`OPENAI_API_KEY`가 환경변수에 있으면 개인 개발용 키로 사용합니다.
+브라우저에서 UI를 확인하려면 `npm run build` 이후 `npm run preview`를 사용합니다.
+미리보기 서버는 루프백에만 바인딩하며 동일 출처와 세션 쿠키를 확인합니다.
+
+## 배포 구조
+
+현재 EXE는 **사용자가 자신의 API 키를 연결하는 개인용 버전**입니다. 개발자 공용 API 키가 포함되어 있지 않습니다.
+`core`가 생성/저장 로직, `desktop`이 안전한 Electron 연결, `server/gateway.mjs`가 같은 로직의 인증된 HTTP 인터페이스입니다.
+`OPENAI_API_KEY`와 `ONGI_GATEWAY_TOKEN`을 서버 환경에 설정하고 `node server/start.mjs`로 루프백 전용 게이트웨이를 실행할 수 있습니다.
+여러 사용자에게 공용 생성 서비스를 배포하려면 사용자 인증, 사용자별 파일 격리/쿼터, HTTPS, 데스크탑 원격 연결을 추가해야 합니다. 현재 게이트웨이는 단일 사용자 프로토타입입니다.
+
+## 검증 범위
+
+실제 API 키가 없는 환경에서는 테스트용 이미지 응답으로 업로드→생성→수정→보관→GIF 흐름을 검증합니다.
+유료 API를 실제 호출한 이미지 품질, 계정의 모델 사용 권한은 키 연결 후 확인해야 합니다.
+Electron 실행 검증은 `electron . --smoke`를 사용합니다. 격리된 데이터 폴더로 실행하면 `smoke.json`에 실제 렌더러와 preload 연결 결과를 기록합니다.
+
+공식 문서: https://developers.openai.com/api/docs/guides/image-generation

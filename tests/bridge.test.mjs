@@ -1,3 +1,29 @@
-import {test,expect,vi} from 'vitest';
-import {createActions} from '../desktop/actions.mjs';
-test('desktop bridge returns image data, delegates exports and never returns a key',async()=>{const studio={state:async()=>({hasKey:true}),asset:async()=>({buffer:Buffer.from('png'),mime:'image/png'}),export:async()=>({buffer:Buffer.from('gif'),mime:'image/gif',ext:'gif'}),importPhotos:vi.fn(),importArtwork:vi.fn(),start:vi.fn(),job:vi.fn(),cancel:vi.fn()};const saveFile=vi.fn(async()=>({saved:true})),setKey=vi.fn();const a=createActions({studio,saveFile,setKey});expect(await a.asset('id')).toBe('data:image/png;base64,cG5n');expect(await a.pixelPreview('id')).toContain('base64');expect(await a.export({id:'id',format:'gif'})).toEqual({saved:true});expect(await a.state()).toEqual({hasKey:true});await a.saveKey({key:'sk-example-only',remember:true});expect(setKey).toHaveBeenCalled();await expect(a.saveKey({key:4})).rejects.toThrow();expect(a.arbitraryRead).toBeUndefined();});
+import { test, expect, vi } from "vitest";
+import { createActions } from "../desktop/actions.mjs";
+test("desktop bridge returns image data, delegates exports and never returns a key", async () => {
+  const studio = {
+    state: async () => ({ hasKey: true }),
+    asset: async () => ({ buffer: Buffer.from("png"), mime: "image/png" }),
+    export: async () => ({
+      buffer: Buffer.from("gif"),
+      mime: "image/gif",
+      ext: "gif",
+    }),
+    importPhotos: vi.fn(),
+    importArtwork: vi.fn(),
+    start: vi.fn(),
+    job: vi.fn(),
+    cancel: vi.fn(),
+  };
+  const saveFile = vi.fn(async () => ({ saved: true })),
+    setKey = vi.fn();
+  const a = createActions({ studio, saveFile, setKey });
+  expect(await a.asset("id")).toBe("data:image/png;base64,cG5n");
+  expect(await a.pixelPreview("id")).toContain("base64");
+  expect(await a.export({ id: "id", format: "gif" })).toEqual({ saved: true });
+  expect(await a.state()).toEqual({ hasKey: true });
+  await a.saveKey({ key: "sk-example-only", remember: true });
+  expect(setKey).toHaveBeenCalled();
+  await expect(a.saveKey({ key: 4 })).rejects.toThrow();
+  expect(a.arbitraryRead).toBeUndefined();
+});

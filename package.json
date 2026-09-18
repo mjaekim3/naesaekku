@@ -1,1 +1,59 @@
-{"name":"ongi-studio","version":"0.1.0","private":true,"type":"module","main":"desktop/main.cjs","description":"A quiet home for the ones we love.","author":"Ongi Studio","scripts":{"build":"vite build","start":"electron .","dev":"vite --host 127.0.0.1","test":"vitest run","test:coverage":"vitest run --coverage","preview":"node server/preview.mjs","dist":"npm run build && electron-builder --win portable --x64 --publish never"},"dependencies":{"openai":"7.18.0","sharp":"0.35.4","gifenc":"1.0.3","react":"19.3.0","react-dom":"19.3.0","lucide-react":"1.47.0"},"devDependencies":{"vite":"8.3.0","vitest":"5.0.1","@vitest/coverage-v8":"5.0.1","electron":"44.4.2","electron-builder":"26.15.3"},"build":{"appId":"local.ongi.studio","productName":"Ongi Studio","directories":{"output":"release"},"files":["dist/**","desktop/**","core/**","server/**","package.json"],"asar":true,"win":{"target":"portable","signAndEditExecutable":false},"portable":{"artifactName":"Ongi-Studio.exe"},"publish":null}}
+{
+  "name": "ongi-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "description": "A quiet home for the ones we love.",
+  "author": "Ongi Studio",
+  "scripts": {
+    "build": "vite build",
+    "start": "electron .",
+    "dev": "vite --host 127.0.0.1",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "preview": "node server/preview.mjs",
+    "dist": "npm run build && electron-builder --win portable --x64 --publish never"
+  },
+  "dependencies": {
+    "gifenc": "1.0.3",
+    "lucide-react": "1.47.0",
+    "openai": "7.18.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.1",
+    "electron": "44.4.2",
+    "electron-builder": "26.15.3",
+    "prettier": "^3.9.8",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  },
+  "build": {
+    "appId": "local.ongi.studio",
+    "productName": "Ongi Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "desktop/**",
+      "core/**",
+      "server/**",
+      "assets/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "Ongi-Studio.exe"
+    },
+    "publish": null
+  }
+}
