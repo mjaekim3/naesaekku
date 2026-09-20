@@ -25,7 +25,9 @@ export function hitAlpha(alpha, width, height, x, y, mirrored = false) {
   return alpha[y * width + (mirrored ? width - 1 - x : x)] > 24;
 }
 export class PetModel {
-  constructor({ displays, x, y, roaming = true, random = Math.random }) {
+  constructor({ displays, x, y, roaming = true, random = Math.random, liftEnabled = false }) {
+    this.liftEnabled = liftEnabled;
+    this.sway = 0;
     this.displays = displays;
     this.random = random;
     const a = displays[0].workArea;
@@ -58,6 +60,8 @@ export class PetModel {
     if (action === "wake") this.setState("idle", 5000);
     if (action === "eat") this.setState("eat", 4000);
     if (action === "pet") this.setState("happy", 2200);
+    if (action === "lift" && this.liftEnabled) this.setState("held");
+    if (action === "land" && this.liftEnabled) this.setState("landing", 450);
     if (action === "walk") {
       this.roaming = true;
       this.setState("walk", 4000 + this.random() * 5000);
@@ -72,6 +76,8 @@ export class PetModel {
     this.dragMoved = false;
     this.offset = { x: cursor.x - this.x, y: cursor.y - this.y };
     this.dragOrigin = { x: this.x, y: this.y };
+    this.lastCursor = cursor;
+    this.sway = 0;
     this.setState("drag");
   }
   dragTo(cursor) {
@@ -84,17 +90,22 @@ export class PetModel {
     )
       return;
     this.dragMoved = true;
-    this.x = x;
-    this.y = y;
+    if (this.liftEnabled) {
+      this.sway = clamp(this.sway + (cursor.x - this.lastCursor.x) * 0.15, -6, 6);
+      this.x = cursor.x - 110;
+      this.y = cursor.y - 90;
+    } else { this.x = x; this.y = y; }
+    this.lastCursor = cursor;
   }
   endDrag() {
     if (this.state !== "drag") return;
     this.updateDisplays(this.displays);
-    this.setState("idle", 5000);
+    this.setState(this.liftEnabled && this.dragMoved ? "landing" : "idle", this.liftEnabled && this.dragMoved ? 450 : 5000);
   }
   tick(delta) {
     const dt = clamp(delta, 0, 100);
     this.elapsed += dt;
+    this.sway *= Math.exp(-dt / 280);
     if (this.state === "walk") {
       this.x += (this.direction * 36 * dt) / 1000;
       const a = this.displays.find((d) => d.id === this.displayId).workArea;
@@ -113,7 +124,9 @@ export class PetModel {
     }
   }
   frame() {
-    if (this.state === "drag") return this.dragView.frame;
+    if (this.state === "drag") return this.liftEnabled && this.dragMoved ? 10 : this.dragView.frame;
+    if (this.state === "held") return 10;
+    if (this.state === "landing") return 11;
     if (this.state === "walk") return 12 + (Math.floor(this.elapsed / 100) % 8);
     if (this.state === "sleep")
       return 6 + (Math.floor(this.elapsed / 1200) % 2);
@@ -125,9 +138,10 @@ export class PetModel {
     return {
       state: this.state,
       frame: this.frame(),
+      rotation: this.liftEnabled && ((this.state === "drag" && this.dragMoved) || this.state === "held") ? clamp(this.sway + Math.sin(this.elapsed / 180) * 2, -8, 8) : 0,
       mirrored:
         this.state === "drag"
-          ? this.dragView.mirrored
+          ? (this.liftEnabled && this.dragMoved ? false : this.dragView.mirrored)
           : this.state === "walk" && this.direction < 0,
       roaming: this.roaming,
     };
