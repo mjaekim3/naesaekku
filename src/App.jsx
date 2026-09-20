@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { bridge } from "./bridge.js";
 import PetPreview from "./PetPreview.jsx";
-import MotionWorkshop from "./MotionWorkshop.jsx";
 import { version } from "../package.json";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
 const Icon = ({ children }) => <span className="icon">{children}</span>;
@@ -436,20 +435,103 @@ export default function App({ initial = EMPTY }) {
           </div>
         </section>
         {page === "studio" && (
-          <MotionWorkshop
-            name={name}
-            setName={setName}
-            features={features}
-            setFeatures={setFeatures}
-            style={style}
-            disabled={working || !!busy}
-            onSaved={async (item) => {
-              await refresh();
-              setSelected(item.id);
-              setPixel(false);
-              notify("확인한 동작을 보관함에 저장했어요.");
-            }}
-          />
+          <section
+            id="sheet-workflow"
+            className="panel"
+            style={{ margin: "0 0 24px", padding: 24 }}
+          >
+            <h2 style={{ fontSize: 20 }}>4×4 시트 한 장으로 데려오기</h2>
+            <p className="hint">
+              완성된 시트가 있다면 이름을 입력하고 ‘③ 동작 시트 가져오기’를 눌러
+              PNG 파일을 선택하세요. 프롬프트 복사는 건너뛰어도 돼요.
+            </p>
+            <label className="field-label" htmlFor="sheet-pet-name">
+              아이 이름
+            </label>
+            <input
+              id="sheet-pet-name"
+              value={name}
+              maxLength={40}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 너부리"
+            />
+            <label className="field-label" htmlFor="sheet-features">
+              꼭 닮았으면 하는 특징
+            </label>
+            <textarea
+              id="sheet-features"
+              value={features}
+              maxLength={2000}
+              onChange={(e) => setFeatures(e.target.value)}
+              placeholder="예: 고양이, 초록 눈, 주황색 줄무늬, 자연스럽게 다문 입"
+            />
+            <p className="hint">
+              가져오기에 성공하면 보관함에 저장돼요. 아래 미리보기에서 동작을
+              확인하고 ‘바탕화면에 데려오기’를 누르세요. 실패하면 이 패널 아래에
+              오류가 표시되며, 해당 시트는 저장되지 않아요.
+            </p>
+            <p className="hint">
+              새로 만들 때: 이름·특징 입력 → 프롬프트 복사 → ChatGPT에 원본
+              사진을 직접 첨부하고 붙여넣기 → 완성된 PNG 가져오기
+            </p>
+            <p className="hint">
+              사진은 자동 전송되지 않아요. ChatGPT의 이미지 생성 이용 한도가
+              적용됩니다. 앱은 이름·특징을 규격에 맞춰 정리하며 사진 분석은
+              ChatGPT가 진행해요.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginTop: 16,
+              }}
+            >
+              <button
+                className="primary"
+                disabled={!name.trim() || working || !!busy}
+                onClick={copyPrompt}
+              >
+                ① 프롬프트 복사
+              </button>
+              <button
+                className="outline-button"
+                onClick={() =>
+                  bridge.openChatGPT().catch((e) => setError(e.message))
+                }
+              >
+                ② ChatGPT 열기
+              </button>
+              <button
+                className="outline-button"
+                disabled={!name.trim() || working || !!busy}
+                onClick={() => sheetFile.current.click()}
+              >
+                {working ? "처리 중…" : "③ 동작 시트 가져오기"}
+              </button>
+            </div>
+            {!name.trim() && (
+              <p className="hint">
+                위 ‘아이 이름’을 입력하면 복사·가져오기 버튼이 활성화돼요.
+              </p>
+            )}
+            {chatPrompt && (
+              <details style={{ marginTop: 12 }}>
+                <summary>프롬프트 보기 / 직접 복사</summary>
+                <textarea
+                  aria-label="ChatGPT용 프롬프트"
+                  readOnly
+                  value={chatPrompt}
+                  onFocus={(e) => e.target.select()}
+                  style={{ width: "100%", minHeight: 170, marginTop: 10 }}
+                />
+              </details>
+            )}
+            <p className="hint">
+              정사각형 · 4×4칸 · 실제 투명 배경의 PNG가 필요해요. 일반 사진 한
+              장은 동작 시트로 사용할 수 없어요.
+            </p>
+          </section>
         )}
         {page === "studio" && (
           <details
@@ -497,77 +579,6 @@ export default function App({ initial = EMPTY }) {
                 {localStatus.message}
               </p>
             )}
-          </details>
-        )}
-        {page === "studio" && (
-          <details
-            className="panel"
-            style={{ margin: "0 0 24px", padding: 24 }}
-          >
-            <summary style={{ fontSize: 16 }}>
-              기존 4×4 동작 시트 가져오기
-            </summary>
-            <p className="hint">
-              아래에 아이 이름·특징을 입력 → 프롬프트 복사 → ChatGPT에 원본
-              사진을 직접 첨부하고 붙여넣기 → 완성된 PNG 가져오기
-            </p>
-            <p className="hint">
-              사진은 자동 전송되지 않아요. ChatGPT의 이미지 생성 이용 한도가
-              적용됩니다. 앱은 이름·특징을 규격에 맞춰 정리하며 사진 분석은
-              ChatGPT가 진행해요.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                marginTop: 16,
-              }}
-            >
-              <button
-                className="primary"
-                disabled={!name.trim() || working || !!busy}
-                onClick={copyPrompt}
-              >
-                ① 프롬프트 복사
-              </button>
-              <button
-                className="outline-button"
-                onClick={() =>
-                  bridge.openChatGPT().catch((e) => setError(e.message))
-                }
-              >
-                ② ChatGPT 열기
-              </button>
-              <button
-                className="outline-button"
-                disabled={!name.trim() || working || !!busy}
-                onClick={() => sheetFile.current.click()}
-              >
-                {working ? "처리 중…" : "③ 동작 시트 가져오기"}
-              </button>
-            </div>
-            {!name.trim() && (
-              <p className="hint">
-                아래 ‘아이의 이름’을 입력하면 복사·가져오기 버튼이 활성화돼요.
-              </p>
-            )}
-            {chatPrompt && (
-              <details style={{ marginTop: 12 }}>
-                <summary>프롬프트 보기 / 직접 복사</summary>
-                <textarea
-                  aria-label="ChatGPT용 프롬프트"
-                  readOnly
-                  value={chatPrompt}
-                  onFocus={(e) => e.target.select()}
-                  style={{ width: "100%", minHeight: 170, marginTop: 10 }}
-                />
-              </details>
-            )}
-            <p className="hint">
-              정사각형 · 4×4칸 · 실제 투명 배경의 PNG가 필요해요. 일반 사진 한
-              장은 동작 시트로 사용할 수 없어요.
-            </p>
           </details>
         )}
         <input
