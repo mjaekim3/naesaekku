@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { removeChroma } from "./local-ai.mjs";
-import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
+import { NATURAL_APPEARANCE } from "./appearance-prompt.mjs";
 export const MOTIONS = {
   walk: { columns: 4, rows: 2, count: 8 },
   idle: { columns: 2, rows: 1, count: 2 },

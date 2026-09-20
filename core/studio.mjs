@@ -15,7 +15,7 @@ import {
   motionGroupPrompt,
 } from "./motion-import.mjs";
 import { LocalAI } from "./local-ai.mjs";
-import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
+import { NATURAL_APPEARANCE } from "./appearance-prompt.mjs";
 
 const text = (v, max, required = false) =>
   typeof v === "string" &&

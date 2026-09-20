@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
+import { NATURAL_APPEARANCE } from "./appearance-prompt.mjs";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -318,7 +318,8 @@ export class LocalAI {
     seed = Math.floor(Math.random() * 2 ** 32),
   ) {
     const localPrompt =
-      prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") + NATURAL_APPEARANCE +
+      prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") +
+      NATURAL_APPEARANCE +
       "\nThe whole background must be flat pure magenta #FF00FF, with NO shadows, ground, grid lines or text. No magenta on the animal. Preserve the animal identity in the reference. Follow the requested illustration style and the approved character design, no photorealism.";
     const queued = await this.request(COMFY, "/prompt", {
       body: {

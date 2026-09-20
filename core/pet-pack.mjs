@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { mkdir, writeFile, readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
+import { NATURAL_APPEARANCE } from "./appearance-prompt.mjs";
 export const validPackId = (id) =>
   typeof id === "string" && /^[a-f0-9-]{36}$/.test(id);
 export async function preparePetSheet(buffer) {

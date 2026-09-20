@@ -174,7 +174,7 @@ export default function MotionWorkshop({
             value={features}
             maxLength={2000}
             onChange={(e) => setFeatures(e.target.value)}
-            placeholder="이마 하트, 귀 모양, 분홍 입술…"
+            placeholder="종, 눈 모양, 털 무늬, 귀 각도…"
             disabled={blocked}
             style={{ width: "100%" }}
           />
@@ -198,8 +198,10 @@ export default function MotionWorkshop({
         </button>
       </div>
       <p className="hint">
-        사진과 기준 캐릭터는 ChatGPT에 직접 첨부해주세요. 앱이 자동 전송하거나
-        생성 요청을 보내지는 않아요.
+        기본 표정은 사진 속 동물의 자연스러운 모습이에요. 고양이는 입을 다문
+        표정으로 만들며, 특별한 표정은 ‘특징’에 적어주세요. 사진과 기준 캐릭터는
+        ChatGPT에 직접 첨부해주세요. 앱이 자동 전송하거나 생성 요청을 보내지는
+        않아요.
       </p>
       <div
         style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "16px 0" }}
