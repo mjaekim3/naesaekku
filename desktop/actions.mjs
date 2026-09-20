@@ -3,11 +3,14 @@ export function createActions({
   setKey,
   saveFile,
   activatePet,
+  beforeDeletePet,
   copyText,
   openChatGPT,
 }) {
   return {
     state: () => studio.state(),
+    permanentlyDeleteArtwork: (r) =>
+      studio.permanentlyDeleteArtwork(r, beforeDeletePet),
     setArtworkDeleted: (r) => studio.setArtworkDeleted(r),
     motionPrompt: (r) => studio.motionPrompt(r),
     copyMotionPrompt: async (r) => {

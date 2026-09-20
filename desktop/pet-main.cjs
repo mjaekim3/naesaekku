@@ -364,6 +364,9 @@ else {
         preload: path.join(__dirname, "preload.cjs"),
         icon: path.join(__dirname, "../assets/icon.png"),
         activatePet: changePet,
+        beforeDeletePet: async (id) => {
+          if (currentPack?.manifest.id === id) await changePet(null);
+        },
       });
       pet = new BrowserWindow({
         width: 220,
@@ -546,12 +549,18 @@ else {
           sendView(true);
           await new Promise((r) => setTimeout(r, 120));
           const liftView = model.view();
-          await fs.writeFile(path.join(dir, "pet-lift.png"), (await pet.webContents.capturePage()).toPNG());
+          await fs.writeFile(
+            path.join(dir, "pet-lift.png"),
+            (await pet.webContents.capturePage()).toPNG(),
+          );
           model.endDrag();
           const landingView = model.view();
           sendView(true);
           await new Promise((r) => setTimeout(r, 120));
-          await fs.writeFile(path.join(dir, "pet-landing.png"), (await pet.webContents.capturePage()).toPNG());
+          await fs.writeFile(
+            path.join(dir, "pet-landing.png"),
+            (await pet.webContents.capturePage()).toPNG(),
+          );
           for (const action of ["walk", "eat", "sleep", "pet", "wake"]) {
             model.act(action);
             sendView(true);

@@ -13,6 +13,7 @@ export const bridge =
     ? window.ongi
     : {
         state: () => request("state"),
+        permanentlyDeleteArtwork: (r) => request("permanentlyDeleteArtwork", r),
         setArtworkDeleted: (r) => request("setArtworkDeleted", r),
         motionPrompt: (r) => request("motionPrompt", r),
         copyMotionPrompt: async (r) => {

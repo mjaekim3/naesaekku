@@ -1,6 +1,14 @@
 import { reviewSheet } from "./sheet-review.mjs";
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
-import { join } from "node:path";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  rename,
+  rm,
+  realpath,
+  lstat,
+} from "node:fs/promises";
+import { join, resolve, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { normalize, thumbnail, pixelate, animate } from "./images.mjs";
 import { createRenderer, publicError, IMAGE_MODEL } from "./provider.mjs";
@@ -246,10 +254,63 @@ export class Studio {
       this.active = null;
     }
   }
+  async permanentlyDeleteArtwork(r, beforeDelete = async () => {}) {
+    if (
+      !r ||
+      r.confirmed !== true ||
+      typeof r.id !== "string" ||
+      !/^[a-f0-9-]{36}$/.test(r.id)
+    )
+      throw Error("영구삭제할 항목과 확인 여부를 확인해주세요.");
+    if (this.active || this.deleting)
+      throw Error("진행 중인 작업이 끝난 뒤 다시 시도해주세요.");
+    const item = this.data.artworks.find((a) => a.id === r.id && a.deletedAt);
+    if (!item) throw Error("휴지통에 있는 항목만 영구삭제할 수 있어요.");
+    this.deleting = true;
+    try {
+      // Resolve and inspect each target before recursively removing any directory.
+      const root = await realpath(this.dir);
+      const targets = [];
+      for (const [folder, filename] of [
+        ["assets", r.id + ".png"],
+        ["pets", r.id],
+      ]) {
+        const parent = resolve(root, folder),
+          target = resolve(parent, filename);
+        if (dirname(target) !== parent) throw Error("잘못된 저장 경로입니다.");
+        try {
+          if ((await realpath(parent)) !== parent)
+            throw Error("연결된 저장 폴더는 삭제할 수 없어요.");
+          const stat = await lstat(target);
+          if (stat.isSymbolicLink() || (await realpath(target)) !== target)
+            throw Error("연결된 파일은 삭제할 수 없어요.");
+          targets.push(target);
+        } catch (e) {
+          if (e.code !== "ENOENT") throw e;
+        }
+      }
+      await beforeDelete(r.id);
+      // Keep the trash record if disk cleanup fails, allowing the same deletion to be retried.
+      for (const target of targets)
+        await rm(target, { recursive: true, force: true });
+      const previous = this.data.artworks;
+      this.data.artworks = previous.filter((a) => a.id !== r.id);
+      try {
+        await this.save();
+      } catch (e) {
+        this.data.artworks = previous;
+        throw e;
+      }
+      return { id: r.id, deleted: true };
+    } finally {
+      this.deleting = false;
+    }
+  }
   async setArtworkDeleted(r) {
     if (!r || typeof r.deleted !== "boolean" || typeof r.id !== "string")
       throw Error("항목을 확인해주세요.");
-    if (this.active) throw Error("진행 중인 작업이 끝난 뒤 다시 시도해주세요.");
+    if (this.active || this.deleting)
+      throw Error("진행 중인 작업이 끝난 뒤 다시 시도해주세요.");
     const item = this.data.artworks.find((a) => a.id === r.id);
     if (!item) throw Error("보관함 항목을 찾지 못했어요.");
     const previous = item.deletedAt;

@@ -40,6 +40,7 @@ export default function App({ initial = EMPTY }) {
     artFile = useRef(),
     initialized = useRef(false);
   const sheetFormat = "lift-v2";
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [sheetDraft, setSheetDraft] = useState(null);
   const [chatPrompt, setChatPrompt] = useState("");
   async function copyPrompt() {
@@ -186,6 +187,24 @@ export default function App({ initial = EMPTY }) {
     } finally {
       setWorking(false);
       if (artFile.current) artFile.current.value = "";
+    }
+  }
+  async function permanentlyDelete() {
+    if (!deleteTarget) return;
+    setWorking(true);
+    setError("");
+    try {
+      await bridge.permanentlyDeleteArtwork({
+        id: deleteTarget.id,
+        confirmed: true,
+      });
+      await refresh();
+      setDeleteTarget(null);
+      notify("영구삭제했어요.");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
     }
   }
   async function changeDeleted(id, deleted) {
@@ -555,6 +574,38 @@ export default function App({ initial = EMPTY }) {
             </p>
             <details className="panel" style={{ padding: 16, marginTop: 16 }}>
               <summary>휴지통 ({data.trash?.length || 0})</summary>
+              <p className="hint">
+                영구삭제하면 이 앱에 저장된 그림과 동작 파일을 복구할 수 없어요.
+                원본 사진·다운로드 파일은 유지돼요. 실행 중인 아이는 기본
+                너부리로 전환돼요.
+              </p>
+              {deleteTarget && (
+                <div
+                  role="alertdialog"
+                  aria-label="영구삭제 확인"
+                  className="panel"
+                  style={{ padding: 16, marginTop: 12 }}
+                >
+                  <p>
+                    <strong>{deleteTarget.name}</strong>을(를) 영구삭제할까요?
+                    삭제 후 복원할 수 없어요.
+                  </p>
+                  <button
+                    className="outline-button"
+                    disabled={working}
+                    onClick={() => setDeleteTarget(null)}
+                  >
+                    취소
+                  </button>{" "}
+                  <button
+                    className="outline-button"
+                    disabled={working}
+                    onClick={permanentlyDelete}
+                  >
+                    영구삭제 확인
+                  </button>
+                </div>
+              )}
               {(data.trash || []).map((a) => (
                 <div
                   key={a.id}
@@ -570,9 +621,19 @@ export default function App({ initial = EMPTY }) {
                   <button
                     className="outline-button"
                     disabled={working}
-                    onClick={() => changeDeleted(a.id, false)}
+                    onClick={() => {
+                      setDeleteTarget(null);
+                      changeDeleted(a.id, false);
+                    }}
                   >
                     복원
+                  </button>
+                  <button
+                    className="outline-button"
+                    disabled={working || Boolean(deleteTarget)}
+                    onClick={() => setDeleteTarget(a)}
+                  >
+                    영구삭제
                   </button>
                 </div>
               ))}

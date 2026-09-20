@@ -3,6 +3,7 @@ const api = {};
 for (const method of [
   "state",
   "setArtworkDeleted",
+  "permanentlyDeleteArtwork",
   "motionPrompt",
   "copyMotionPrompt",
   "prepareMotion",

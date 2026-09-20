@@ -9,6 +9,7 @@ export function createRegistration({
   icon,
   openStudio,
   activatePet,
+  beforeDeletePet,
   onState = () => {},
 }) {
   const { BrowserWindow, ipcMain, safeStorage, dialog } = electron;
@@ -34,6 +35,7 @@ export function createRegistration({
     const actions = createActions({
       studio,
       activatePet,
+      beforeDeletePet,
       copyText: (text) => electron.clipboard.writeText(text),
       openChatGPT: () => electron.shell.openExternal("https://chatgpt.com/"),
       setKey: async ({ key, remember }) => {
