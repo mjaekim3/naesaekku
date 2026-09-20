@@ -305,6 +305,9 @@ else {
           currentPack = null;
         }
       }
+      model.liftEnabled = currentPack
+        ? currentPack.manifest.sheetFormat === "lift-v2"
+        : true;
       if (masks.length !== FRAME_COUNT * 192 * 192)
         throw Error("Invalid sprite alpha masks");
       protocol.handle("app", (request) => {
@@ -343,6 +346,9 @@ else {
           pack?.alpha || (await fs.readFile(path.join(root, "pet/alpha.bin")));
         if (model.state === "drag") model.endDrag();
         currentPack = pack;
+        model.liftEnabled = pack
+          ? pack.manifest.sheetFormat === "lift-v2"
+          : true;
         masks = nextMasks;
         model.act("wake");
         ready = false;
@@ -485,7 +491,7 @@ else {
         if (ready && visible && !suspended && !menuOpen) {
           const cursor = screen.getCursorScreenPoint();
           if (model.state === "drag") model.dragTo(cursor);
-          else model.tick(delta);
+          model.tick(delta);
           position();
           sendView();
           const view = model.view(),
@@ -534,6 +540,18 @@ else {
               selected: model.displayId,
             });
           }
+          model.beginDrag({ x: model.x + 110, y: model.y + 90 });
+          model.dragTo({ x: model.x + 160, y: model.y + 100 });
+          model.tick(33);
+          sendView(true);
+          await new Promise((r) => setTimeout(r, 120));
+          const liftView = model.view();
+          await fs.writeFile(path.join(dir, "pet-lift.png"), (await pet.webContents.capturePage()).toPNG());
+          model.endDrag();
+          const landingView = model.view();
+          sendView(true);
+          await new Promise((r) => setTimeout(r, 120));
+          await fs.writeFile(path.join(dir, "pet-landing.png"), (await pet.webContents.capturePage()).toPNG());
           for (const action of ["walk", "eat", "sleep", "pet", "wake"]) {
             model.act(action);
             sendView(true);
@@ -548,6 +566,8 @@ else {
             JSON.stringify(
               {
                 ready: true,
+                liftView,
+                landingView,
                 frames: data.frames,
                 states: [...smokeStates],
                 monitors,

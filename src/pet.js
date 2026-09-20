@@ -25,6 +25,11 @@ function draw(next) {
   view = next;
   ctx.clearRect(0, 0, 220, 230);
   ctx.save();
+  if (next.rotation) {
+    ctx.translate(110, 90);
+    ctx.rotate((next.rotation * Math.PI) / 180);
+    ctx.translate(-110, -90);
+  }
   if (next.mirrored) {
     ctx.translate(220, 0);
     ctx.scale(-1, 1);

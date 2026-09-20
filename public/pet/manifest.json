@@ -3,7 +3,7 @@
   "width": 192,
   "height": 192,
   "frames": 20,
-  "source": "Approved Nerburi 4x4 sheet: assets/nerburi-sheet.png",
+  "source": "assets/nerburi-lift-sheet.png",
   "animations": {
     "walk": [
       12,
@@ -29,6 +29,13 @@
     ],
     "happy": [
       5
+    ],
+    "held": [
+      10
+    ],
+    "landing": [
+      11
     ]
-  }
+  },
+  "sheetFormat": "lift-v2"
 }

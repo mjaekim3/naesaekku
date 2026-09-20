@@ -38,11 +38,12 @@ export default function App({ initial = EMPTY }) {
   const sheetFile = useRef(),
     artFile = useRef(),
     initialized = useRef(false);
+  const [sheetFormat, setSheetFormat] = useState("lift-v2");
   const [chatPrompt, setChatPrompt] = useState("");
   async function copyPrompt() {
     setError("");
     try {
-      const request = { name: name.trim(), features, style };
+      const request = { name: name.trim(), features, style, sheetFormat };
       setChatPrompt(await bridge.chatPrompt(request));
       await bridge.copyChatPrompt(request);
       notify(
@@ -61,6 +62,7 @@ export default function App({ initial = EMPTY }) {
         throw Error("동작 시트는 20MB 이하여야 해요.");
       const pet = await bridge.importPetSheet({
         name: name.trim(),
+        sheetFormat,
         file: {
           name: file.name,
           bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
@@ -277,6 +279,26 @@ export default function App({ initial = EMPTY }) {
               완성된 시트가 있다면 이름을 입력하고 ‘③ 동작 시트 가져오기’를 눌러
               PNG 파일을 선택하세요. 프롬프트 복사는 건너뛰어도 돼요.
             </p>
+            <label className="field-label" htmlFor="sheet-format">
+              시트 형식
+            </label>
+            <select
+              id="sheet-format"
+              value={sheetFormat}
+              onChange={(e) => {
+                setSheetFormat(e.target.value);
+                setChatPrompt("");
+              }}
+            >
+              <option value="lift-v2">
+                들기 포함형 · 마지막 두 칸: 들린 자세 / 착지
+              </option>
+              <option value="legacy">기존형 · 마지막 두 칸: 편안한 표정</option>
+            </select>
+            <p className="hint">
+              기존에 만든 시트는 ‘기존형’을 선택하세요. 들기 포함형은 마지막 두
+              칸에 실제 들기·착지 그림이 있어야 해요.
+            </p>
             <h3>우리 아이 소개</h3>
             <label className="field-label" htmlFor="sheet-pet-name">
               아이의 이름
@@ -478,7 +500,10 @@ export default function App({ initial = EMPTY }) {
                   <span className="stage-spark spark-one">✧</span>
                   <span className="stage-spark spark-two">✧</span>
                   {artwork?.hasMotion ? (
-                    <PetPreview id={selected} />
+                    <PetPreview
+                      id={selected}
+                      liftEnabled={artwork.sheetFormat === "lift-v2"}
+                    />
                   ) : view ? (
                     <img
                       className="pet-art"

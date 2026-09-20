@@ -41,11 +41,32 @@ test("ChatGPT workflow creates a personalized prompt and imports animation witho
     expect(pet.hasMotion).toBe(true);
     expect(pet.source).toBe("imported");
     expect(pet.sheetFormat).toBe("legacy");
-    const lifted = await studio.importPetSheet({name:"너부리",sheetFormat:"lift-v2",file:{name:"sheet.png",bytes}});
+    const lifted = await studio.importPetSheet({
+      name: "너부리",
+      sheetFormat: "lift-v2",
+      file: { name: "sheet.png", bytes },
+    });
     expect(lifted.sheetFormat).toBe("lift-v2");
-    expect(JSON.parse(await readFile(join(dir,"pets",lifted.id,"manifest.json"),"utf8")).sheetFormat).toBe("lift-v2");
-    expect(studio.chatPrompt({name:"너부리",features:"",style:"pixel",sheetFormat:"lift-v2"})).toContain("Cell 14: lifted");
-    await expect(studio.importPetSheet({name:"너부리",sheetFormat:"unknown",file:{name:"sheet.png",bytes}})).rejects.toThrow();
+    expect(
+      JSON.parse(
+        await readFile(join(dir, "pets", lifted.id, "manifest.json"), "utf8"),
+      ).sheetFormat,
+    ).toBe("lift-v2");
+    expect(
+      studio.chatPrompt({
+        name: "너부리",
+        features: "",
+        style: "pixel",
+        sheetFormat: "lift-v2",
+      }),
+    ).toContain("Cell 14: lifted");
+    await expect(
+      studio.importPetSheet({
+        name: "너부리",
+        sheetFormat: "unknown",
+        file: { name: "sheet.png", bytes },
+      }),
+    ).rejects.toThrow();
     expect(await studio.petFrames(pet.id)).toHaveLength(20);
     expect(render).not.toHaveBeenCalled();
     expect((await studio.state()).hasKey).toBe(false);

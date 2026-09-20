@@ -25,7 +25,14 @@ export function hitAlpha(alpha, width, height, x, y, mirrored = false) {
   return alpha[y * width + (mirrored ? width - 1 - x : x)] > 24;
 }
 export class PetModel {
-  constructor({ displays, x, y, roaming = true, random = Math.random, liftEnabled = false }) {
+  constructor({
+    displays,
+    x,
+    y,
+    roaming = true,
+    random = Math.random,
+    liftEnabled = false,
+  }) {
     this.liftEnabled = liftEnabled;
     this.sway = 0;
     this.displays = displays;
@@ -91,16 +98,26 @@ export class PetModel {
       return;
     this.dragMoved = true;
     if (this.liftEnabled) {
-      this.sway = clamp(this.sway + (cursor.x - this.lastCursor.x) * 0.15, -6, 6);
+      this.sway = clamp(
+        this.sway + (cursor.x - this.lastCursor.x) * 0.15,
+        -6,
+        6,
+      );
       this.x = cursor.x - 110;
       this.y = cursor.y - 90;
-    } else { this.x = x; this.y = y; }
+    } else {
+      this.x = x;
+      this.y = y;
+    }
     this.lastCursor = cursor;
   }
   endDrag() {
     if (this.state !== "drag") return;
     this.updateDisplays(this.displays);
-    this.setState(this.liftEnabled && this.dragMoved ? "landing" : "idle", this.liftEnabled && this.dragMoved ? 450 : 5000);
+    this.setState(
+      this.liftEnabled && this.dragMoved ? "landing" : "idle",
+      this.liftEnabled && this.dragMoved ? 450 : 5000,
+    );
   }
   tick(delta) {
     const dt = clamp(delta, 0, 100);
@@ -124,7 +141,8 @@ export class PetModel {
     }
   }
   frame() {
-    if (this.state === "drag") return this.liftEnabled && this.dragMoved ? 10 : this.dragView.frame;
+    if (this.state === "drag")
+      return this.liftEnabled && this.dragMoved ? 10 : this.dragView.frame;
     if (this.state === "held") return 10;
     if (this.state === "landing") return 11;
     if (this.state === "walk") return 12 + (Math.floor(this.elapsed / 100) % 8);
@@ -138,10 +156,16 @@ export class PetModel {
     return {
       state: this.state,
       frame: this.frame(),
-      rotation: this.liftEnabled && ((this.state === "drag" && this.dragMoved) || this.state === "held") ? clamp(this.sway + Math.sin(this.elapsed / 180) * 2, -8, 8) : 0,
+      rotation:
+        this.liftEnabled &&
+        ((this.state === "drag" && this.dragMoved) || this.state === "held")
+          ? clamp(this.sway + Math.sin(this.elapsed / 180) * 2, -8, 8)
+          : 0,
       mirrored:
         this.state === "drag"
-          ? (this.liftEnabled && this.dragMoved ? false : this.dragView.mirrored)
+          ? this.liftEnabled && this.dragMoved
+            ? false
+            : this.dragView.mirrored
           : this.state === "walk" && this.direction < 0,
       roaming: this.roaming,
     };

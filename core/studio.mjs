@@ -157,14 +157,21 @@ export class Studio {
     if (!r || !text(r.name, 40, true))
       throw Error("아이의 이름을 먼저 입력해주세요.");
     const sheetFormat = r.sheetFormat ?? "legacy";
-    if (!["legacy", "lift-v2"].includes(sheetFormat)) throw Error("시트 형식을 확인해주세요.");
+    if (!["legacy", "lift-v2"].includes(sheetFormat))
+      throw Error("시트 형식을 확인해주세요.");
     this.validateFile(r.file);
     if (!/\.png$/i.test(r.file.name))
       throw Error("투명 배경의 PNG 동작 시트를 선택해주세요.");
     if (this.active) throw Error("진행 중인 생성이 끝난 뒤 가져와주세요.");
     const id = randomUUID();
     try {
-      await savePetPack(this.dir, id, r.name, Buffer.from(r.file.bytes), sheetFormat);
+      await savePetPack(
+        this.dir,
+        id,
+        r.name,
+        Buffer.from(r.file.bytes),
+        sheetFormat,
+      );
     } catch (e) {
       if (e.message === "SPRITE_LAYOUT")
         throw Error(
