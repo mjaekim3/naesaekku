@@ -17,6 +17,7 @@ import {
   FolderHeart,
 } from "lucide-react";
 import { bridge } from "./bridge.js";
+import SheetReview, { imageFile, downloadTemplate } from "./SheetReview.jsx";
 import PetPreview from "./PetPreview.jsx";
 import { version } from "../package.json";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
@@ -39,6 +40,7 @@ export default function App({ initial = EMPTY }) {
     artFile = useRef(),
     initialized = useRef(false);
   const sheetFormat = "lift-v2";
+  const [sheetDraft, setSheetDraft] = useState(null);
   const [chatPrompt, setChatPrompt] = useState("");
   async function copyPrompt() {
     setError("");
@@ -51,6 +53,21 @@ export default function App({ initial = EMPTY }) {
       );
     } catch (e) {
       setError(e.message);
+    }
+  }
+  async function reviewSheetFile(file) {
+    if (!file) return;
+    setWorking(true);
+    setError("");
+    try {
+      setSheetDraft(
+        await bridge.reviewPetSheet({ file: await imageFile(file) }),
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
+      if (sheetFile.current) sheetFile.current.value = "";
     }
   }
   async function importSheet(file) {
@@ -69,12 +86,14 @@ export default function App({ initial = EMPTY }) {
         },
       });
       await refresh();
+      setSheetDraft(null);
       setSelected(pet.id);
       setPage("studio");
       setPixel(false);
       notify("동작을 가져왔어요. 미리보기 확인 후 바탕화면에 데려오세요.");
     } catch (e) {
       setError(e.message);
+      throw e;
     } finally {
       setWorking(false);
       if (sheetFile.current) sheetFile.current.value = "";
@@ -315,8 +334,8 @@ export default function App({ initial = EMPTY }) {
             />
             <h2>② 그림 스타일 고르기</h2>
             <p className="hint">
-              너부리의 실제 사진을 바탕으로 만든 예시예요. 실제 결과는 첨부한 반려동물 사진과
-              생성 결과에 따라 달라져요.
+              너부리의 실제 사진을 바탕으로 만든 예시예요. 실제 결과는 첨부한
+              반려동물 사진과 생성 결과에 따라 달라져요.
             </p>
             <div className="style-examples">
               {[
@@ -380,6 +399,13 @@ export default function App({ initial = EMPTY }) {
                 ChatGPT 열기
               </button>
             </div>
+            <button onClick={downloadTemplate}>
+              4×4 배치 참고 이미지 저장
+            </button>
+            <p className="hint">
+              원본 사진과 배치 참고 이미지를 ChatGPT에 함께 첨부하세요. 참고
+              이미지의 글자와 선은 완성본에서 빼도록 프롬프트에 안내되어 있어요.
+            </p>
             <h2>④ 완성된 이미지를 저장하고 가져오기</h2>
             <ol className="import-guide">
               <li>
@@ -396,7 +422,7 @@ export default function App({ initial = EMPTY }) {
                 PNG 파일을 선택하세요.
               </li>
               <li>
-                아래 미리보기에서 움직임을 확인한 뒤{" "}
+                16칸을 확인하고 저장한 뒤, 아래 미리보기에서 움직임을 확인하고{" "}
                 <strong>바탕화면에 데려오기</strong>를 누르면 완료예요.
               </li>
             </ol>
@@ -411,6 +437,14 @@ export default function App({ initial = EMPTY }) {
             >
               {working ? "가져오는 중…" : "동작 시트 가져오기"}
             </button>
+            {sheetDraft && (
+              <SheetReview
+                draft={sheetDraft}
+                key={sheetDraft.cells[0].image}
+                onCancel={() => setSheetDraft(null)}
+                onSave={importSheet}
+              />
+            )}
             {!name.trim() && (
               <p className="hint">
                 위 ‘아이 이름’을 입력하면 복사·가져오기 버튼이 활성화돼요.
@@ -429,8 +463,9 @@ export default function App({ initial = EMPTY }) {
               </details>
             )}
             <p className="hint">
-              정사각형 · 4×4칸 · 실제 투명 배경의 PNG가 필요해요. 일반 사진 한
-              장은 동작 시트로 사용할 수 없어요.
+              4×4칸 PNG를 선택하면 칸별 확인·교체 화면이 열려요. 단색 배경은
+              제거를 시도할 수 있어요. 일반 사진 한 장은 동작 시트로 사용할 수
+              없어요.
             </p>
           </section>
         )}
@@ -439,7 +474,7 @@ export default function App({ initial = EMPTY }) {
           type="file"
           accept="image/png"
           hidden
-          onChange={(e) => importSheet(e.target.files?.[0])}
+          onChange={(e) => reviewSheetFile(e.target.files?.[0])}
         />
         <input
           ref={artFile}

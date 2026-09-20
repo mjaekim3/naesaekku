@@ -31,6 +31,7 @@ export const bridge =
         openChatGPT: async () => {
           window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
         },
+        reviewPetSheet: (r) => request("reviewPetSheet", r),
         importPetSheet: (r) => request("importPetSheet", r),
         petFrames: (id) => request("petFrames", id),
         activatePet: (id) => request("activatePet", id),

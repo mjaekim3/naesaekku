@@ -12,6 +12,7 @@ for (const method of [
   "chatPrompt",
   "copyChatPrompt",
   "openChatGPT",
+  "reviewPetSheet",
   "importPetSheet",
   "petFrames",
   "activatePet",

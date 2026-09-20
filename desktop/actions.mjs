@@ -32,6 +32,7 @@ export function createActions({
       await openChatGPT();
       return { opened: true };
     },
+    reviewPetSheet: (r) => studio.reviewPetSheet(r),
     importPetSheet: (r) => studio.importPetSheet(r),
     petFrames: (id) => studio.petFrames(id),
     activatePet: async (id) => {

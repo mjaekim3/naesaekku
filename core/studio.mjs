@@ -1,3 +1,4 @@
+import { reviewSheet } from "./sheet-review.mjs";
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -151,7 +152,14 @@ export class Studio {
       !["pixel", "storybook"].includes(r.style)
     )
       throw Error("이름과 특징을 입력해주세요.");
-    return `첨부한 사진들은 같은 반려동물입니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${r.style === "pixel" ? "선명하고 귀여운 픽셀 아트" : "따뜻한 동화 일러스트"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name, r.sheetFormat).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 1024×1024 이상의 정사각형 투명 PNG 한 장으로 주세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
+    return `첨부한 반려동물 사진은 외형 참고입니다. 배치 참고 이미지가 있으면 4×4 칸 위치와 동작 순서만 참고하고 그 안의 글자, 테두리, 점선은 완성본에 그리지 마세요. 이미지 한 장을 생성하고 멈추세요. 코드 실행이나 자동 재생성을 요청하는 작업이 아닙니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${r.style === "pixel" ? "선명하고 귀여운 픽셀 아트" : "따뜻한 동화 일러스트"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name, r.sheetFormat).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 1024×1024 이상의 정사각형 투명 PNG 한 장으로 주세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
+  }
+  async reviewPetSheet(r) {
+    this.validateFile(r?.file);
+    return reviewSheet(Buffer.from(r.file.bytes), {
+      single: r.single ?? false,
+      removeBackground: r.removeBackground ?? false,
+    });
   }
   async importPetSheet(r) {
     if (!r || !text(r.name, 40, true))
