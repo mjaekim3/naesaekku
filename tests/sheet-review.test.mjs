@@ -98,10 +98,30 @@ test("studio review validates bytes and reuses repaired cells without paid servi
   }
 });
 
-test("review keeps 512px tiles and explicitly flags insufficient lift headroom", async()=>{
- const source=await sharp(await png(256,256,'#00000000')).composite([{input:await png(20,50,'#aa7755'),left:138,top:192}]).png().toBuffer();
- const r=await reviewSheet(source);
- expect(r.cells[14].warnings).toContain('headroom');
- const meta=await sharp(Buffer.from(r.cells[14].image.split(',')[1],'base64')).metadata();
- expect(meta.width).toBe(512);
+test("review keeps 512px tiles and explicitly flags insufficient lift headroom", async () => {
+  const source = await sharp(await png(256, 256, "#00000000"))
+    .composite([{ input: await png(20, 50, "#aa7755"), left: 138, top: 192 }])
+    .png()
+    .toBuffer();
+  const r = await reviewSheet(source, {autoSplit:false});
+  expect(r.cells[14].warnings).toContain("headroom");
+  const meta = await sharp(
+    Buffer.from(r.cells[14].image.split(",")[1], "base64"),
+  ).metadata();
+  expect(meta.width).toBe(512);
+});
+
+test("adaptive row boundaries return crossed ears to the lifted cell without losing pixels",async()=>{
+ const source=await sharp(await png(256,256,'#00000000')).composite([
+ {input:await png(30,20,'#00ff00'),left:140,top:145},
+ {input:await png(20,56,'#ff0000'),left:145,top:184}
+ ]).png().toBuffer();
+ const fixed=await reviewSheet(source,{autoSplit:false});
+ const result=await reviewSheet(source);
+ expect(result.adjusted).toBe(true);
+ const raw=async c=>sharp(Buffer.from(c.originalImage.split(',')[1],'base64')).ensureAlpha().raw().toBuffer();
+ const reds=buf=>Array.from({length:buf.length/4},(_,i)=>buf[i*4]>200&&buf[i*4+1]<10&&buf[i*4+3]>24).filter(Boolean).length;
+ expect(reds(await raw(fixed.cells[10]))).toBeGreaterThan(0);
+ expect(reds(await raw(result.cells[10]))).toBe(0);
+ expect(reds(await raw(result.cells[14]))).toBe(20*56);
 });
