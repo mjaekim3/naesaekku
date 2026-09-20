@@ -8,9 +8,9 @@ test("built-in pet is Nerburi with frames and hit masks from the approved sheet"
   expect(main).toContain("기본 너부리로 돌아가기");
   const pack = await preparePetSheet(await readFile(new URL("../assets/nerburi-sheet.png", import.meta.url)));
   for (let i = 0; i < 20; i++) {
-    expect(await readFile(new URL(`../public/pet/${i}.png`, import.meta.url))).toEqual(pack.frames[i]);
+    expect((await readFile(new URL(`../public/pet/${i}.png`, import.meta.url))).equals(pack.frames[i])).toBe(true);
   }
-  expect(await readFile(new URL("../public/pet/alpha.bin", import.meta.url))).toEqual(pack.alpha);
+  expect((await readFile(new URL("../public/pet/alpha.bin", import.meta.url))).equals(pack.alpha)).toBe(true);
 });
 test("pet boots directly into an isolated overlay and preserves existing data location", async () => {
   const entry = await readFile(

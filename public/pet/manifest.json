@@ -1,9 +1,9 @@
 {
-  "name": "터치",
+  "name": "너부리",
   "width": 192,
   "height": 192,
   "frames": 20,
-  "source": "AI-generated animation sheet derived from the approved earlier character",
+  "source": "Approved Nerburi 4x4 sheet: assets/nerburi-sheet.png",
   "animations": {
     "walk": [
       12,
@@ -30,47 +30,5 @@
     "happy": [
       5
     ]
-  },
-  "walkAlignment": [
-    {
-      "frame": 12,
-      "dx": 0,
-      "dy": 0
-    },
-    {
-      "frame": 13,
-      "dx": -1,
-      "dy": 1
-    },
-    {
-      "frame": 14,
-      "dx": -1,
-      "dy": 1
-    },
-    {
-      "frame": 15,
-      "dx": 0,
-      "dy": 1
-    },
-    {
-      "frame": 16,
-      "dx": -1,
-      "dy": 1
-    },
-    {
-      "frame": 17,
-      "dx": -1,
-      "dy": -1
-    },
-    {
-      "frame": 18,
-      "dx": -2,
-      "dy": 1
-    },
-    {
-      "frame": 19,
-      "dx": 0,
-      "dy": 1
-    }
-  ]
+  }
 }
