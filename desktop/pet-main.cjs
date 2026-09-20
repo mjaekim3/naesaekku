@@ -57,7 +57,7 @@ let updates;
 let registration;
 let currentPack = null;
 let changePet;
-const petName = () => currentPack?.manifest.name || "터치";
+const petName = () => currentPack?.manifest.name || "너부리";
 const registrationSmoke = process.argv.includes("--registration-smoke");
 async function openRegistration() {
   try {
@@ -176,7 +176,7 @@ function items() {
     { type: "separator" },
     { label: "내새꾸 등록하기 · 사진으로 만들기", click: openRegistration },
     {
-      label: "기본 터치로 돌아가기",
+      label: "기본 너부리로 돌아가기",
       visible: !!currentPack,
       click: () => changePet(null).catch(() => {}),
     },
@@ -699,7 +699,7 @@ else {
       if (!smoke)
         dialog.showErrorBox(
           title,
-          "터치를 불러오지 못했어요. 실행 파일을 다시 열어주세요.",
+          "반려동물을 불러오지 못했어요. 실행 파일을 다시 열어주세요.",
         );
       app.exit(1);
     });

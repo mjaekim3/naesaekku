@@ -1,0 +1,76 @@
+{
+  "name": "터치",
+  "width": 192,
+  "height": 192,
+  "frames": 20,
+  "source": "AI-generated animation sheet derived from the approved earlier character",
+  "animations": {
+    "walk": [
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "idle": [
+      4,
+      5
+    ],
+    "sleep": [
+      6,
+      7
+    ],
+    "eat": [
+      8,
+      9
+    ],
+    "happy": [
+      5
+    ]
+  },
+  "walkAlignment": [
+    {
+      "frame": 12,
+      "dx": 0,
+      "dy": 0
+    },
+    {
+      "frame": 13,
+      "dx": -1,
+      "dy": 1
+    },
+    {
+      "frame": 14,
+      "dx": -1,
+      "dy": 1
+    },
+    {
+      "frame": 15,
+      "dx": 0,
+      "dy": 1
+    },
+    {
+      "frame": 16,
+      "dx": -1,
+      "dy": 1
+    },
+    {
+      "frame": 17,
+      "dx": -1,
+      "dy": -1
+    },
+    {
+      "frame": 18,
+      "dx": -2,
+      "dy": 1
+    },
+    {
+      "frame": 19,
+      "dx": 0,
+      "dy": 1
+    }
+  ]
+}
