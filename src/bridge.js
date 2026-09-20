@@ -13,6 +13,7 @@ export const bridge =
     ? window.ongi
     : {
         state: () => request("state"),
+        setArtworkDeleted: (r) => request("setArtworkDeleted", r),
         motionPrompt: (r) => request("motionPrompt", r),
         copyMotionPrompt: async (r) => {
           await navigator.clipboard.writeText(await request("motionPrompt", r));

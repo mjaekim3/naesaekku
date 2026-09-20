@@ -1046,3 +1046,13 @@ footer > span {
     transition: none !important;
   }
 }
+.style-examples {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:680px;margin:16px 0 28px;}
+.style-example {display:flex;flex-direction:column;gap:8px;text-align:left;border:2px solid #e2e6dc;border-radius:16px;padding:12px;background:#fff;cursor:pointer;color:#34483d;}
+.style-example.selected {border-color:#607b55;background:#f4f7ed;}
+.style-example img {width:100%;height:200px;object-fit:contain;border-radius:10px;background:#fffaf0;}
+.style-example span {font-size:13px;color:#667361;}
+.import-guide {padding-left:24px;line-height:1.9;max-width:850px;}
+.import-guide li {margin:10px 0;}
+#sheet-workflow h2 {margin:28px 0 16px;font-size:20px;}
+#sheet-workflow h2:first-child {margin-top:0;}
+.library-grid > div > .art-card {width:100%;}

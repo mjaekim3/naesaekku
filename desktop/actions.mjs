@@ -8,6 +8,7 @@ export function createActions({
 }) {
   return {
     state: () => studio.state(),
+    setArtworkDeleted: (r) => studio.setArtworkDeleted(r),
     motionPrompt: (r) => studio.motionPrompt(r),
     copyMotionPrompt: async (r) => {
       const text = studio.motionPrompt(r);

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const api = {};
 for (const method of [
   "state",
+  "setArtworkDeleted",
   "motionPrompt",
   "copyMotionPrompt",
   "prepareMotion",

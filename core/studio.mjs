@@ -238,10 +238,29 @@ export class Studio {
       this.active = null;
     }
   }
+  async setArtworkDeleted(r) {
+    if (!r || typeof r.deleted !== "boolean" || typeof r.id !== "string")
+      throw Error("항목을 확인해주세요.");
+    if (this.active) throw Error("진행 중인 작업이 끝난 뒤 다시 시도해주세요.");
+    const item = this.data.artworks.find((a) => a.id === r.id);
+    if (!item) throw Error("보관함 항목을 찾지 못했어요.");
+    const previous = item.deletedAt;
+    if (r.deleted) item.deletedAt = new Date().toISOString();
+    else delete item.deletedAt;
+    try {
+      await this.save();
+    } catch (e) {
+      if (previous) item.deletedAt = previous;
+      else delete item.deletedAt;
+      throw e;
+    }
+    return { id: item.id, deleted: r.deleted };
+  }
   async state() {
     return {
       photos: this.data.photos,
-      artworks: this.data.artworks,
+      artworks: this.data.artworks.filter((a) => !a.deletedAt),
+      trash: this.data.artworks.filter((a) => a.deletedAt),
       jobs: [...this.jobs.values()].map(({ controller, ...j }) => j),
       hasKey: !!(await this.getKey()),
       model: IMAGE_MODEL,

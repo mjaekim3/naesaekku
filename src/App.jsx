@@ -38,7 +38,7 @@ export default function App({ initial = EMPTY }) {
   const sheetFile = useRef(),
     artFile = useRef(),
     initialized = useRef(false);
-  const [sheetFormat, setSheetFormat] = useState("lift-v2");
+  const sheetFormat = "lift-v2";
   const [chatPrompt, setChatPrompt] = useState("");
   async function copyPrompt() {
     setError("");
@@ -169,6 +169,24 @@ export default function App({ initial = EMPTY }) {
       if (artFile.current) artFile.current.value = "";
     }
   }
+  async function changeDeleted(id, deleted) {
+    setWorking(true);
+    setError("");
+    try {
+      await bridge.setArtworkDeleted({ id, deleted });
+      const next = await refresh();
+      if (deleted && selected === id) setSelected(next.artworks[0]?.id || null);
+      notify(
+        deleted
+          ? "휴지통으로 옮겼어요. 휴지통에서 복원할 수 있어요."
+          : "보관함으로 복원했어요.",
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorking(false);
+    }
+  }
   async function exportImage(format) {
     setWorking(true);
     try {
@@ -274,32 +292,7 @@ export default function App({ initial = EMPTY }) {
             className="panel"
             style={{ margin: "0 0 24px", padding: 24 }}
           >
-            <h2 style={{ fontSize: 20 }}>4×4 시트 한 장으로 데려오기</h2>
-            <p className="hint">
-              완성된 시트가 있다면 이름을 입력하고 ‘③ 동작 시트 가져오기’를 눌러
-              PNG 파일을 선택하세요. 프롬프트 복사는 건너뛰어도 돼요.
-            </p>
-            <label className="field-label" htmlFor="sheet-format">
-              시트 형식
-            </label>
-            <select
-              id="sheet-format"
-              value={sheetFormat}
-              onChange={(e) => {
-                setSheetFormat(e.target.value);
-                setChatPrompt("");
-              }}
-            >
-              <option value="lift-v2">
-                들기 포함형 · 마지막 두 칸: 들린 자세 / 착지
-              </option>
-              <option value="legacy">기존형 · 마지막 두 칸: 편안한 표정</option>
-            </select>
-            <p className="hint">
-              기존에 만든 시트는 ‘기존형’을 선택하세요. 들기 포함형은 마지막 두
-              칸에 실제 들기·착지 그림이 있어야 해요.
-            </p>
-            <h3>우리 아이 소개</h3>
+            <h2>① 우리 아이 소개</h2>
             <label className="field-label" htmlFor="sheet-pet-name">
               아이의 이름
             </label>
@@ -320,30 +313,48 @@ export default function App({ initial = EMPTY }) {
               onChange={(e) => setFeatures(e.target.value)}
               placeholder="꼬리가 보노보노의 너부리 같음"
             />
-            <label className="field-label" htmlFor="sheet-style">
-              그림 스타일
-            </label>
-            <select
-              id="sheet-style"
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-            >
-              <option value="pixel">픽셀 아트</option>
-              <option value="storybook">포근한 일러스트</option>
-            </select>
+            <h2>② 그림 스타일 고르기</h2>
             <p className="hint">
-              가져오기에 성공하면 보관함에 저장돼요. 아래 미리보기에서 동작을
-              확인하고 ‘바탕화면에 데려오기’를 누르세요. 실패하면 이 패널 아래에
-              오류가 표시되며, 해당 시트는 저장되지 않아요.
+              너부리 캐릭터 기준 예시예요. 실제 결과는 첨부한 반려동물 사진과
+              생성 결과에 따라 달라져요.
+            </p>
+            <div className="style-examples">
+              {[
+                ["pixel", "픽셀 아트", "또렷한 네모 픽셀과 간결한 색감"],
+                [
+                  "storybook",
+                  "포근한 일러스트",
+                  "부드러운 털 표현과 따뜻한 그림책 느낌",
+                ],
+              ].map(([value, label, description]) => (
+                <button
+                  key={value}
+                  className={
+                    style === value ? "style-example selected" : "style-example"
+                  }
+                  aria-pressed={style === value}
+                  onClick={() => setStyle(value)}
+                >
+                  <img
+                    src={`./examples/nerburi-${value}.png`}
+                    alt={`너부리 ${label} 예시`}
+                  />
+                  <strong>
+                    {label} {style === value ? "✓" : ""}
+                  </strong>
+                  <span>{description}</span>
+                </button>
+              ))}
+            </div>
+            <h2>③ ChatGPT에서 동작 시트 만들기</h2>
+            <p>
+              프롬프트를 복사하고 ChatGPT를 연 뒤,{" "}
+              <strong>우리 아이 원본 사진을 직접 첨부</strong>하고 붙여넣어
+              주세요.
             </p>
             <p className="hint">
-              새로 만들 때: 이름·특징 입력 → 프롬프트 복사 → ChatGPT에 원본
-              사진을 직접 첨부하고 붙여넣기 → 완성된 PNG 가져오기
-            </p>
-            <p className="hint">
-              사진은 자동 전송되지 않아요. ChatGPT의 이미지 생성 이용 한도가
-              적용됩니다. 앱은 이름·특징을 규격에 맞춰 정리하며 사진 분석은
-              ChatGPT가 진행해요.
+              걷기·대기·수면·식사·들기·착지가 포함된 4×4 시트 한 장을 만들어요.
+              사진은 자동 전송되지 않으며 ChatGPT 이용 한도가 적용돼요.
             </p>
             <div
               style={{
@@ -358,7 +369,7 @@ export default function App({ initial = EMPTY }) {
                 disabled={!name.trim() || working}
                 onClick={copyPrompt}
               >
-                ① 프롬프트 복사
+                프롬프트 복사
               </button>
               <button
                 className="outline-button"
@@ -366,16 +377,40 @@ export default function App({ initial = EMPTY }) {
                   bridge.openChatGPT().catch((e) => setError(e.message))
                 }
               >
-                ② ChatGPT 열기
-              </button>
-              <button
-                className="outline-button"
-                disabled={!name.trim() || working}
-                onClick={() => sheetFile.current.click()}
-              >
-                {working ? "처리 중…" : "③ 동작 시트 가져오기"}
+                ChatGPT 열기
               </button>
             </div>
+            <h2>④ 완성된 이미지를 저장하고 가져오기</h2>
+            <ol className="import-guide">
+              <li>
+                ChatGPT가 <strong>16칸 동작 시트 이미지</strong>를 완성할 때까지
+                기다려 주세요.
+              </li>
+              <li>
+                이미지를 열어 <strong>다운로드</strong>를 누르거나, 마우스
+                오른쪽 버튼 → <strong>다른 이름으로 저장</strong>으로 PC에
+                저장해 주세요. 예: 다운로드 폴더의 ‘너부리-동작시트.png’
+              </li>
+              <li>
+                아래 <strong>동작 시트 가져오기</strong>를 누르고 방금 저장한
+                PNG 파일을 선택하세요.
+              </li>
+              <li>
+                아래 미리보기에서 움직임을 확인한 뒤{" "}
+                <strong>바탕화면에 데려오기</strong>를 누르면 완료예요.
+              </li>
+            </ol>
+            <p className="hint">
+              화면 캡처 대신 원본 PNG를 저장하세요. 확장자만 PNG로 바꿔도 투명
+              배경이 생기지는 않아요. 마지막 두 칸은 들린 자세와 착지여야 해요.
+            </p>
+            <button
+              className="primary"
+              disabled={!name.trim() || working}
+              onClick={() => sheetFile.current.click()}
+            >
+              {working ? "가져오는 중…" : "동작 시트 가져오기"}
+            </button>
             {!name.trim() && (
               <p className="hint">
                 위 ‘아이 이름’을 입력하면 복사·가져오기 버튼이 활성화돼요.
@@ -440,35 +475,73 @@ export default function App({ initial = EMPTY }) {
             ) : (
               <div className="library-grid">
                 {data.artworks.map((a) => (
-                  <button
-                    className="art-card"
-                    key={a.id}
-                    onClick={() => {
-                      setSelected(a.id);
-                      setPage("studio");
-                      setPixel(false);
-                    }}
-                  >
-                    <div className="checker">
-                      <img src={a.thumbnail} alt={a.name} />
-                    </div>
-                    <span className="art-kind">
-                      {a.source === "imported"
-                        ? "가져온 그림"
-                        : a.mode === "blink"
-                          ? "눈 깜빡임"
-                          : "AI로 만든 모습"}
-                    </span>
-                    <strong>{a.name}</strong>
-                    <small>
-                      {new Date(a.createdAt || Date.now()).toLocaleDateString(
-                        "ko-KR",
-                      )}
-                    </small>
-                  </button>
+                  <div key={a.id}>
+                    <button
+                      className="art-card"
+                      key={a.id}
+                      onClick={() => {
+                        setSelected(a.id);
+                        setPage("studio");
+                        setPixel(false);
+                      }}
+                    >
+                      <div className="checker">
+                        <img src={a.thumbnail} alt={a.name} />
+                      </div>
+                      <span className="art-kind">
+                        {a.source === "imported"
+                          ? "가져온 그림"
+                          : a.mode === "blink"
+                            ? "눈 깜빡임"
+                            : "AI로 만든 모습"}
+                      </span>
+                      <strong>{a.name}</strong>
+                      <small>
+                        {new Date(a.createdAt || Date.now()).toLocaleDateString(
+                          "ko-KR",
+                        )}
+                      </small>
+                    </button>
+                    <button
+                      className="text-button"
+                      disabled={working}
+                      aria-label={`${a.name} 삭제`}
+                      onClick={() => changeDeleted(a.id, true)}
+                    >
+                      삭제 · 휴지통으로
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
+            <p className="hint">
+              삭제한 항목은 휴지통에서 복원할 수 있어요. 현재 바탕화면에서 실행
+              중인 아이는 그대로 유지돼요.
+            </p>
+            <details className="panel" style={{ padding: 16, marginTop: 16 }}>
+              <summary>휴지통 ({data.trash?.length || 0})</summary>
+              {(data.trash || []).map((a) => (
+                <div
+                  key={a.id}
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    marginTop: 12,
+                  }}
+                >
+                  <img src={a.thumbnail} alt="" width={48} />
+                  <span>{a.name}</span>
+                  <button
+                    className="outline-button"
+                    disabled={working}
+                    onClick={() => changeDeleted(a.id, false)}
+                  >
+                    복원
+                  </button>
+                </div>
+              ))}
+            </details>
           </section>
         ) : (
           <div className="workspace" style={{ gridTemplateColumns: "1fr" }}>
