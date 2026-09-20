@@ -88,12 +88,13 @@ export async function preparePetSheet(buffer) {
   );
   return { frames, alpha };
 }
-export async function savePetPack(dir, id, name, sheet) {
+export async function savePetPack(dir, id, name, sheet, sheetFormat = "legacy") {
   if (!validPackId(id)) throw Error("Invalid pet id");
   const pack = await preparePetSheet(sheet);
-  return savePreparedPetPack(dir, id, name, pack, sheet);
+  return savePreparedPetPack(dir, id, name, pack, sheet, sheetFormat);
 }
-export async function savePreparedPetPack(dir, id, name, pack, sheet) {
+export async function savePreparedPetPack(dir, id, name, pack, sheet, sheetFormat = "legacy") {
+  if (!["legacy", "lift-v2"].includes(sheetFormat)) throw Error("Invalid sheet format");
   if (!validPackId(id)) throw Error("Invalid pet id");
   const parent = join(dir, "pets");
   await mkdir(parent, { recursive: true });
@@ -105,7 +106,7 @@ export async function savePreparedPetPack(dir, id, name, pack, sheet) {
   await writeFile(join(tmp, "alpha.bin"), pack.alpha);
   await writeFile(
     join(tmp, "manifest.json"),
-    JSON.stringify({ version: 1, id, name, frames: 20, size: 192 }),
+    JSON.stringify({ version: 1, id, name, frames: 20, size: 192, sheetFormat }),
   );
   await writeFile(join(tmp, "sheet.png"), sheet);
   await rename(tmp, join(parent, id));
@@ -128,6 +129,7 @@ export async function loadPetPack(dir, id) {
   );
   return { root, manifest, alpha };
 }
-export function motionPrompt(name) {
-  return `Create one square transparent PNG sprite sheet for the SAME pet ${name} in the FIRST reference (approved master). Preserve its identity, markings and art style. ${NATURAL_APPEARANCE} EXACTLY 4 columns and 4 rows, 16 equal cells, read left-to-right then top-to-bottom. No text, labels, grid lines, scenery or shadows. One complete pet per cell, confined to the central 65% of each cell. Leave fully transparent padding of at least 15% on ALL FOUR sides of EVERY cell, including tails, ears, whiskers, feet and bowls; never overlap cells. Do not crop the canvas to the subjects. No colored fringes, floating speckles or stray background pixels. Same camera and body scale. Cells 0-7: eight sequential distinct frames of a seamless right-facing side-view walking cycle, natural alternating front and hind leg contact/pass/lift, stable head and torso. Cells 8-9: front-facing seated idle then eyes closed blink, mouth unchanged. Cells 10-11: curled sleeping, subtle breathing. Cells 12-13: eating from small bowl, head down then slightly raised. Cells 14-15: relaxed seated eyes closed, subtle species-appropriate tail movement. Keep feet at the same baseline within each animation. Real transparent alpha, no checkerboard background.`;
+export function motionPrompt(name, sheetFormat = "legacy") {
+  const ending = sheetFormat === "lift-v2" ? "Cell 14: lifted upright front-facing, relaxed legs dangling, calm closed mouth, full body visible, no hand or person or collar tension. Cell 15: gentle landing on four paws, slightly bent knees, relaxed expression. Keep the lifted head centered horizontally." : "Cells 14-15: relaxed seated eyes closed, subtle species-appropriate tail movement.";
+  return `Create one square transparent PNG sprite sheet for the SAME pet ${name} in the FIRST reference (approved master). Preserve its identity, markings and art style. ${NATURAL_APPEARANCE} EXACTLY 4 columns and 4 rows, 16 equal cells, read left-to-right then top-to-bottom. No text, labels, grid lines, scenery or shadows. One complete pet per cell, confined to the central 65% of each cell. Leave fully transparent padding of at least 15% on ALL FOUR sides of EVERY cell, including tails, ears, whiskers, feet and bowls; never overlap cells. Do not crop the canvas to the subjects. No colored fringes, floating speckles or stray background pixels. Same camera and body scale. Cells 0-7: eight sequential distinct frames of a seamless right-facing side-view walking cycle, natural alternating front and hind leg contact/pass/lift, stable head and torso. Cells 8-9: front-facing seated idle then eyes closed blink, mouth unchanged. Cells 10-11: curled sleeping, subtle breathing. Cells 12-13: eating from small bowl, head down then slightly raised. ${ending} Keep feet at the same baseline within each animation. Real transparent alpha, no checkerboard background.`;
 }

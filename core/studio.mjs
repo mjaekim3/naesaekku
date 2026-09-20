@@ -151,18 +151,20 @@ export class Studio {
       !["pixel", "storybook"].includes(r.style)
     )
       throw Error("이름과 특징을 입력해주세요.");
-    return `첨부한 사진들은 같은 반려동물입니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${r.style === "pixel" ? "선명하고 귀여운 픽셀 아트" : "따뜻한 동화 일러스트"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 1024×1024 이상의 정사각형 투명 PNG 한 장으로 주세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
+    return `첨부한 사진들은 같은 반려동물입니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${r.style === "pixel" ? "선명하고 귀여운 픽셀 아트" : "따뜻한 동화 일러스트"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name, r.sheetFormat).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 1024×1024 이상의 정사각형 투명 PNG 한 장으로 주세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
   }
   async importPetSheet(r) {
     if (!r || !text(r.name, 40, true))
       throw Error("아이의 이름을 먼저 입력해주세요.");
+    const sheetFormat = r.sheetFormat ?? "legacy";
+    if (!["legacy", "lift-v2"].includes(sheetFormat)) throw Error("시트 형식을 확인해주세요.");
     this.validateFile(r.file);
     if (!/\.png$/i.test(r.file.name))
       throw Error("투명 배경의 PNG 동작 시트를 선택해주세요.");
     if (this.active) throw Error("진행 중인 생성이 끝난 뒤 가져와주세요.");
     const id = randomUUID();
     try {
-      await savePetPack(this.dir, id, r.name, Buffer.from(r.file.bytes));
+      await savePetPack(this.dir, id, r.name, Buffer.from(r.file.bytes), sheetFormat);
     } catch (e) {
       if (e.message === "SPRITE_LAYOUT")
         throw Error(
@@ -176,6 +178,7 @@ export class Studio {
       id,
       name: r.name + " · 가져온 동작",
       petName: r.name,
+      sheetFormat,
       source: "imported",
       mode: "pet",
       hasMotion: true,
