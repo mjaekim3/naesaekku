@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -17,14 +18,14 @@ const POSES = [
   "strict right-facing side profile walking: right front paw lowering, left rear paw pushing back",
   "strict right-facing side profile walking: paws passing beneath body, right front paw planted",
   "strict right-facing side profile walking: left front paw lifting forward, right rear paw swinging forward",
-  "sitting front view, both eyes open, small pink tongue smiling",
-  "sitting in the EXACT same front pose as the reference, both eyes gently closed in a happy blink, small pink tongue smiling",
+  "sitting front view, both eyes open, natural relaxed expression and mouth matching the reference",
+  "sitting in the EXACT same front pose as the reference, only eyelids gently closed, mouth unchanged",
   "lying curled up asleep, both eyes closed, head resting on front paws",
   "lying curled up asleep, both eyes closed, head resting on front paws, chest raised very slightly while breathing",
   "sitting three-quarter right view eating from a small bowl, head lowered towards bowl",
   "sitting in the same three-quarter right position beside a small bowl, head slightly raised licking lips",
-  "sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning left",
-  "sitting front view smiling happily, eyes closed, small pink tongue tip, tail leaning right",
+  "sitting front view relaxed, eyes closed, mouth unchanged, tail leaning slightly left",
+  "sitting front view relaxed, eyes closed, mouth unchanged, tail leaning slightly right",
 ];
 
 // Native ComfyUI nodes, based on the official Flux.2 Klein distilled edit workflow.
@@ -317,7 +318,7 @@ export class LocalAI {
     seed = Math.floor(Math.random() * 2 ** 32),
   ) {
     const localPrompt =
-      prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") +
+      prompt.replace(/transparent/gi, "solid bright magenta (#FF00FF)") + NATURAL_APPEARANCE +
       "\nThe whole background must be flat pure magenta #FF00FF, with NO shadows, ground, grid lines or text. No magenta on the animal. Preserve the animal identity in the reference. Follow the requested illustration style and the approved character design, no photorealism.";
     const queued = await this.request(COMFY, "/prompt", {
       body: {

@@ -15,6 +15,7 @@ import {
   motionGroupPrompt,
 } from "./motion-import.mjs";
 import { LocalAI } from "./local-ai.mjs";
+import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
 
 const text = (v, max, required = false) =>
   typeof v === "string" &&
@@ -25,12 +26,12 @@ export function buildPrompt(r) {
     r.style === "pixel"
       ? "Refined pixel-art character with deliberate square pixels, readable shapes and a restrained palette; no blurry pixel filter."
       : "Warm hand-drawn storybook character, soft shapes and restrained warm colors.";
-  const identity = `The reference photographs show the SAME beloved pet. Preserve its identity, exact fur markings, ear shape, proportions and distinctive features. Pet name: ${r.name}. Owner-identified traits: ${r.features}. Never invent text, accessories, halos or wings.`;
+  const identity = `The reference photographs show the SAME beloved pet. Preserve its identity, exact fur markings, ear shape, proportions and distinctive features. Pet name: ${r.name}. Owner-identified traits: ${r.features}. ${NATURAL_APPEARANCE} Never invent text, accessories, halos or wings.`;
   if (r.mode === "blink")
-    return `The FIRST image is the approved master character. Produce ONE alternate frame. Change ONLY both eyes to a gentle happy blink. Keep the canvas, position, silhouette, fur, mouth, palette and every other feature exactly aligned. Transparent background. No text.`;
+    return `The FIRST image is the approved master character. Produce ONE alternate frame. Change ONLY both eyes to a natural gentle blink. Keep the canvas, position, silhouette, fur, mouth, palette and every other feature exactly aligned. Do not add a smile or tongue. Transparent background. No text.`;
   if (r.mode === "refine")
     return `The FIRST image is the approved character to edit; later photos are identity references. Preserve composition and identity. ${identity} Requested change: ${r.instruction}. Keep all unrelated details unchanged. Transparent background.`;
-  return `${identity} ${style} Full body, seated facing the viewer, a gentle cheerful smile and a small pink tongue tip. Center the entire character on a transparent square background with 12% clear padding on all sides. No scenery, no shadow, no writing. This is a tender keepsake.`;
+  return `${identity} ${style} Full body facing the viewer, a natural resting pose and relaxed expression appropriate to the animal species. Center the entire character on a transparent square background with 12% clear padding on all sides. No scenery, no shadow, no writing. This is a tender keepsake.`;
 }
 export class Studio {
   static async open(options) {

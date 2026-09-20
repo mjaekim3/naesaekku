@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { mkdir, writeFile, readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
+import { NATURAL_APPEARANCE } from './appearance-prompt.mjs';
 export const validPackId = (id) =>
   typeof id === "string" && /^[a-f0-9-]{36}$/.test(id);
 export async function preparePetSheet(buffer) {
@@ -128,5 +129,5 @@ export async function loadPetPack(dir, id) {
   return { root, manifest, alpha };
 }
 export function motionPrompt(name) {
-  return `Create one square transparent PNG sprite sheet for the SAME pet ${name} in the FIRST reference (approved master). Preserve its identity, markings and art style. EXACTLY 4 columns and 4 rows, 16 equal cells, read left-to-right then top-to-bottom. No text, labels, grid lines, scenery or shadows. One complete pet per cell, clear transparent margin at least 10% in EVERY cell; never overlap cells. Same camera and body scale. Cells 0-7: eight sequential distinct frames of a seamless right-facing side-view walking cycle, natural alternating front and hind leg contact/pass/lift, stable head and torso. Cells 8-9: front-facing seated idle then eyes closed blink. Cells 10-11: curled sleeping, subtle breathing. Cells 12-13: eating from small bowl, head down then slightly raised. Cells 14-15: happy seated eyes closed, gentle tail wag. Keep feet at the same baseline within each animation. Real transparent alpha, no checkerboard background.`;
+  return `Create one square transparent PNG sprite sheet for the SAME pet ${name} in the FIRST reference (approved master). Preserve its identity, markings and art style. ${NATURAL_APPEARANCE} EXACTLY 4 columns and 4 rows, 16 equal cells, read left-to-right then top-to-bottom. No text, labels, grid lines, scenery or shadows. One complete pet per cell, clear transparent margin at least 10% in EVERY cell; never overlap cells. Same camera and body scale. Cells 0-7: eight sequential distinct frames of a seamless right-facing side-view walking cycle, natural alternating front and hind leg contact/pass/lift, stable head and torso. Cells 8-9: front-facing seated idle then eyes closed blink, mouth unchanged. Cells 10-11: curled sleeping, subtle breathing. Cells 12-13: eating from small bowl, head down then slightly raised. Cells 14-15: relaxed seated eyes closed, subtle species-appropriate tail movement. Keep feet at the same baseline within each animation. Real transparent alpha, no checkerboard background.`;
 }
