@@ -7,9 +7,11 @@ test("registration defaults to one full sheet instead of per-action uploads", ()
   expect(html).toContain('id="sheet-workflow"');
   expect(html).toContain("다른 이름으로 저장");
   expect(html).not.toContain('id="sheet-format"');
-  expect(html.indexOf("우리 아이 소개")).toBeLessThan(html.indexOf("프롬프트 복사"));
-  expect(html).toContain('alt="너부리 픽셀 아트 예시"');
-  expect(html).toContain('alt="너부리 포근한 일러스트 예시"');
+  expect(html.indexOf("우리 아이 소개")).toBeLessThan(
+    html.indexOf("프롬프트 복사"),
+  );
+  expect(html).toContain('alt="너부리 만화 캐릭터 스타일 예시"');
+  expect(html).toContain('alt="너부리 실제와 비슷하게 예시"');
   expect(html).not.toContain("동작 만들기 · GPT 그림을 앱에서 정리");
 });
 test("empty studio explains photo workflow and never pretends an image is generated", () => {

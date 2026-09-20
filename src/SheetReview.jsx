@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { bridge } from "./bridge.js";
 export const CELL_NAMES = [
   "걷기 1",
@@ -19,6 +19,7 @@ export const CELL_NAMES = [
   "착지",
 ];
 const reasons = {
+  headroom: "머리 위 여백 부족 — 원본의 귀 끝이 온전히 보이는지 확인하세요",
   empty: "빈 칸 — 교체 필요",
   edge: "가장자리 닿음 — 귀·꼬리 잘림 확인",
   opaque: "투명 배경 없음",
@@ -39,15 +40,15 @@ async function loadImage(src) {
 }
 export async function assembleCells(cells) {
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 1024;
+  canvas.width = canvas.height = 2048;
   const ctx = canvas.getContext("2d");
   for (let i = 0; i < 16; i++)
     ctx.drawImage(
       await loadImage(cells[i].image),
-      (i % 4) * 256,
-      Math.floor(i / 4) * 256,
-      256,
-      256,
+      (i % 4) * 512,
+      Math.floor(i / 4) * 512,
+      512,
+      512,
     );
   const blob = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/png"),
@@ -70,7 +71,7 @@ export function downloadTemplate() {
     ctx.strokeRect(x + 1, y + 1, 254, 254);
     ctx.fillText(`${i + 1}. ${name}`, x + 14, y + 28);
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(x + 38, y + 45, 180, 180);
+    ctx.strokeRect(x + 38, y + (i === 14 ? 64 : 45), 180, i === 14 ? 153 : 180);
     ctx.setLineDash([]);
   });
   const a = document.createElement("a");
@@ -83,6 +84,11 @@ export default function SheetReview({ draft, onCancel, onSave }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [checked, setChecked] = useState(false);
+  useEffect(() => {
+    setCells(draft.cells);
+    setChecked(false);
+    setError("");
+  }, [draft]);
   async function change(fn) {
     setBusy(true);
     setError("");
@@ -110,6 +116,12 @@ export default function SheetReview({ draft, onCancel, onSave }) {
   return (
     <section className="sheet-review" aria-label="동작 시트 확인 및 보완">
       <h2>16칸 확인하고 적용하기</h2>
+      {draft.adjusted && (
+        <p role="status">
+          그림이 칸 경계를 넘어가 있어 빈 공간을 기준으로 분할 위치를
+          조정했어요. 들기 귀와 위쪽 수면 칸을 함께 확인해주세요.
+        </p>
+      )}
       <p>
         여백과 위치를 자동 정렬했어요. 칸 이름에 맞는 동작인지 확인하세요. 잘린
         신체나 잘못 그린 동작을 자동으로 복원하지는 못해요.
@@ -119,6 +131,20 @@ export default function SheetReview({ draft, onCancel, onSave }) {
         배경으로 다시 만든 칸을 교체해 주세요. 교체에는 시트 전체가 아닌 동작
         하나의 이미지를 넣으세요.
       </p>
+      <details style={{ marginTop: 12 }}>
+        <summary>들기 귀가 잘렸나요? 이 칸만 다시 만들기</summary>
+        <p>
+          현재 캐릭터 그림을 ChatGPT에 첨부하고 아래 문장을 보내세요. 완성된 한
+          장을 15번 ‘들기’의 ‘이 칸 교체’로 넣으면 됩니다.
+        </p>
+        <textarea
+          aria-label="들기 수정 프롬프트"
+          readOnly
+          onFocus={(e) => e.target.select()}
+          style={{ width: "100%", minHeight: 130 }}
+          value="첨부한 캐릭터와 동일한 외형과 그림체로 들기 동작 하나만 생성해주세요. 정면에서 몸이 세로로 들리고 네 다리는 자연스럽게 아래로 늘어진 모습입니다. 손이나 사람은 그리지 마세요. 양쪽 귀 끝·머리·발·꼬리가 전부 보이는 전신 구도. 캐릭터 전체 높이는 화면 높이의 60% 이내, 귀 위 25%와 발 아래 15%는 완전히 비워주세요. 공간이 부족하면 전신을 비율 그대로 작게 그리세요. 귀를 자르거나 접지 마세요. 고양이는 입을 다문 자연스러운 표정. 가능한 최대 기본 생성 해상도의 정사각형 투명 PNG 한 장, 시트·격자·글자 없이 생성하고 멈춰주세요."
+        />
+      </details>
       <div className="actions">
         <button
           disabled={busy}

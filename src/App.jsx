@@ -27,7 +27,7 @@ export default function App({ initial = EMPTY }) {
     [selected, setSelected] = useState(initial.artworks[0]?.id || null);
   const [name, setName] = useState("너부리"),
     [features, setFeatures] = useState("꼬리가 보노보노의 너부리 같음"),
-    [style, setStyle] = useState("pixel");
+    [style, setStyle] = useState("cartoon");
   const [toast, setToast] = useState(""),
     [error, setError] = useState(""),
     [playing, setPlaying] = useState(false),
@@ -41,6 +41,8 @@ export default function App({ initial = EMPTY }) {
     initialized = useRef(false);
   const sheetFormat = "lift-v2";
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [autoSplit, setAutoSplit] = useState(true);
+  const originalSheet = useRef(null);
   const [sheetDraft, setSheetDraft] = useState(null);
   const [chatPrompt, setChatPrompt] = useState("");
   async function copyPrompt() {
@@ -56,13 +58,17 @@ export default function App({ initial = EMPTY }) {
       setError(e.message);
     }
   }
-  async function reviewSheetFile(file) {
+  async function reviewSheetFile(file, detect = autoSplit) {
     if (!file) return;
+    originalSheet.current = file;
     setWorking(true);
     setError("");
     try {
       setSheetDraft(
-        await bridge.reviewPetSheet({ file: await imageFile(file) }),
+        await bridge.reviewPetSheet({
+          file: await imageFile(file),
+          autoSplit: detect,
+        }),
       );
     } catch (e) {
       setError(e.message);
@@ -124,7 +130,11 @@ export default function App({ initial = EMPTY }) {
           if (saved) {
             setName(saved.name ?? "너부리");
             setFeatures(saved.features ?? "꼬리가 보노보노의 너부리 같음");
-            setStyle(saved.style || "pixel");
+            setStyle(
+              ["realistic", "storybook"].includes(saved.style)
+                ? "realistic"
+                : "cartoon",
+            );
           }
         } catch {}
         initialized.current = true;
@@ -353,18 +363,24 @@ export default function App({ initial = EMPTY }) {
             />
             <h2>② 그림 스타일 고르기</h2>
             <p className="hint">
-              너부리의 실제 사진을 바탕으로 만든 예시예요. 실제 결과는 첨부한
-              반려동물 사진과 생성 결과에 따라 달라져요.
+              너부리의 기존 그림으로 비교하는 스타일 참고예요. 실제 결과는
+              첨부한 반려동물 사진과 생성 결과에 따라 달라져요.
             </p>
             <div className="style-examples">
               {[
-                ["pixel", "픽셀 아트", "또렷한 네모 픽셀과 간결한 색감"],
                 [
-                  "storybook",
-                  "포근한 일러스트",
-                  "부드러운 털 표현과 따뜻한 그림책 느낌",
+                  "cartoon",
+                  "만화 캐릭터 스타일",
+                  "고유한 무늬를 살린 귀여운 2D 캐릭터",
+                  "./pet/4.png",
                 ],
-              ].map(([value, label, description]) => (
+                [
+                  "realistic",
+                  "실제와 비슷하게",
+                  "실제 얼굴 비율과 섬세한 털 표현",
+                  "./examples/nerburi-storybook.png",
+                ],
+              ].map(([value, label, description, example]) => (
                 <button
                   key={value}
                   className={
@@ -373,10 +389,7 @@ export default function App({ initial = EMPTY }) {
                   aria-pressed={style === value}
                   onClick={() => setStyle(value)}
                 >
-                  <img
-                    src={`./examples/nerburi-${value}.png`}
-                    alt={`너부리 ${label} 예시`}
-                  />
+                  <img src={example} alt={`너부리 ${label} 예시`} />
                   <strong>
                     {label} {style === value ? "✓" : ""}
                   </strong>
@@ -392,7 +405,9 @@ export default function App({ initial = EMPTY }) {
             </p>
             <p className="hint">
               걷기·대기·수면·식사·들기·착지가 포함된 4×4 시트 한 장을 만들어요.
-              사진은 자동 전송되지 않으며 ChatGPT 이용 한도가 적용돼요.
+              사진은 자동 전송되지 않으며 ChatGPT 이용 한도가 적용돼요. 가능한
+              최대 해상도로 요청하지만 실제 출력 크기는 생성 서비스에 따라
+              달라요.
             </p>
             <div
               style={{
@@ -422,7 +437,8 @@ export default function App({ initial = EMPTY }) {
               4×4 배치 참고 이미지 저장
             </button>
             <p className="hint">
-              원본 사진과 배치 참고 이미지를 ChatGPT에 함께 첨부하세요. 참고
+              배치 참고 이미지는 선택 사항이에요. 원본 사진과 프롬프트만으로도
+              요청할 수 있어요. 배치가 반복해서 틀릴 때 함께 첨부하세요. 참고
               이미지의 글자와 선은 완성본에서 빼도록 프롬프트에 안내되어 있어요.
             </p>
             <h2>④ 완성된 이미지를 저장하고 가져오기</h2>
@@ -456,10 +472,24 @@ export default function App({ initial = EMPTY }) {
             >
               {working ? "가져오는 중…" : "동작 시트 가져오기"}
             </button>
+            <label className="hint" style={{ display: "block", marginTop: 12 }}>
+              <input
+                type="checkbox"
+                checked={autoSplit}
+                disabled={working}
+                onChange={(e) => {
+                  setAutoSplit(e.target.checked);
+                  if (originalSheet.current)
+                    reviewSheetFile(originalSheet.current, e.target.checked);
+                }}
+              />{" "}
+              그림 사이 빈 공간으로 자르는 경계 자동 조정 (변경하면 칸별 수정은
+              초기화돼요)
+            </label>
             {sheetDraft && (
               <SheetReview
                 draft={sheetDraft}
-                key={sheetDraft.cells[0].image}
+                key={String(autoSplit) + sheetDraft.cells[0].image}
                 onCancel={() => setSheetDraft(null)}
                 onSave={importSheet}
               />

@@ -157,15 +157,16 @@ export class Studio {
       !r ||
       !text(r.name, 40, true) ||
       !text(r.features, 2000) ||
-      !["pixel", "storybook"].includes(r.style)
+      !["pixel", "storybook", "cartoon", "realistic"].includes(r.style)
     )
       throw Error("이름과 특징을 입력해주세요.");
-    return `첨부한 반려동물 사진은 외형 참고입니다. 배치 참고 이미지가 있으면 4×4 칸 위치와 동작 순서만 참고하고 그 안의 글자, 테두리, 점선은 완성본에 그리지 마세요. 이미지 한 장을 생성하고 멈추세요. 코드 실행이나 자동 재생성을 요청하는 작업이 아닙니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${r.style === "pixel" ? "선명하고 귀여운 픽셀 아트" : "따뜻한 동화 일러스트"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name, r.sheetFormat).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 1024×1024 이상의 정사각형 투명 PNG 한 장으로 주세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
+    return `첨부한 반려동물 사진은 외형 참고입니다. 배치 참고 이미지가 있으면 4×4 칸 위치와 동작 순서만 참고하고 그 안의 글자, 테두리, 점선은 완성본에 그리지 마세요. 이미지 한 장을 생성하고 멈추세요. 코드 실행이나 자동 재생성을 요청하는 작업이 아닙니다. 먼저 사진에서 털 무늬, 얼굴, 귀, 체형을 파악하고 그 특징을 유지하여 데스크톱 펫용 동작 시트를 직접 생성해주세요. 이름: ${r.name}. 꼭 유지할 특징: ${r.features || "사진의 고유한 무늬와 체형"}. 스타일: ${["pixel", "cartoon"].includes(r.style) ? "만화 캐릭터 스타일: 깔끔한 선과 부드러운 음영의 귀여운 2D 캐릭터. 사진 속 고유한 얼굴과 무늬를 유지하고 픽셀화하지 마세요" : "실제와 비슷하게: 실제 반려동물의 얼굴 비율과 체형을 충실히 살린 섬세한 털 질감과 자연스러운 음영. 과장된 눈이나 만화 윤곽선 없이 표현하세요"}. 사진을 그대로 배치하지 말고 한 캐릭터로 그려주세요.\n\n${motionPrompt(r.name, r.sheetFormat).replace("in the FIRST reference (approved master)", "in the attached pet photographs")}\n\n최종 결과는 사용 가능한 최대 기본 생성 해상도의 정사각형 투명 PNG 한 장 (가능하면 4096×4096, 지원하지 않으면 가능한 가장 큰 정사각형 해상도)으로 주세요. 단순 확대나 샤프닝으로 고해상도를 흉내 내지 마세요. 각 칸은 정확히 동일한 크기이며 투명 여백을 두세요. 특히 4행 3열 들기는 귀 끝부터 발과 꼬리 끝까지 모두 보여야 합니다. 체크무늬를 배경에 그리지 마세요. 프레임 순서를 꼭 지키고 다운로드할 수 있는 이미지로 만들어주세요.`;
   }
   async reviewPetSheet(r) {
     this.validateFile(r?.file);
     return reviewSheet(Buffer.from(r.file.bytes), {
       single: r.single ?? false,
+      autoSplit: r.autoSplit ?? true,
       removeBackground: r.removeBackground ?? false,
     });
   }

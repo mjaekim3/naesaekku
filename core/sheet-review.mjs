@@ -40,9 +40,13 @@ function clearBackground(data, w, h) {
 }
 export async function reviewSheet(
   buffer,
-  { single = false, removeBackground = false } = {},
+  { single = false, removeBackground = false, autoSplit = true } = {},
 ) {
-  if (typeof single !== "boolean" || typeof removeBackground !== "boolean")
+  if (
+    typeof single !== "boolean" ||
+    typeof removeBackground !== "boolean" ||
+    typeof autoSplit !== "boolean"
+  )
     throw Error("잘못된 시트 옵션이에요.");
   const meta = await sharp(buffer, { limitInputPixels: 40_000_000 }).metadata();
   if (
@@ -59,17 +63,64 @@ export async function reviewSheet(
     throw Error("4×4 시트 이미지 또는 한 칸 교체용 이미지를 선택해주세요.");
   const size = single ? 1 : 4,
     tiles = [];
+  const rows = Array.from({ length: size }, () =>
+    Array.from({ length: size + 1 }, (_, i) =>
+      Math.round((i * meta.height) / size),
+    ),
+  );
+  let adjusted = false;
+  if (!single && autoSplit && meta.hasAlpha) {
+    const alpha = await sharp(buffer, { limitInputPixels: 40_000_000 })
+      .extractChannel("alpha")
+      .raw()
+      .toBuffer();
+    for (let col = 0; col < 4; col++) {
+      const x0 = Math.round((col * meta.width) / 4),
+        x1 = Math.round(((col + 1) * meta.width) / 4);
+      const occupied = new Uint8Array(meta.height);
+      for (let y = 0; y < meta.height; y++)
+        for (let x = x0; x < x1; x++)
+          if (alpha[y * meta.width + x] > 24) {
+            occupied[y] = 1;
+            break;
+          }
+      for (let row = 1; row < 4; row++) {
+        const nominal = rows[col][row];
+        if (!occupied[nominal] && !occupied[nominal - 1]) continue;
+        const radius = Math.floor((meta.height / 4) * 0.35),
+          lo = Math.max(1, nominal - radius),
+          hi = Math.min(meta.height - 1, nominal + radius);
+        let candidate = nominal,
+          distance = Infinity;
+        for (let y = lo; y <= hi; y++) {
+          if (occupied[y]) continue;
+          const start = y;
+          while (y <= hi && !occupied[y]) y++;
+          if (y - start < 3) continue;
+          const mid = Math.floor((start + y - 1) / 2),
+            d = Math.abs(mid - nominal);
+          if (d < distance) {
+            distance = d;
+            candidate = mid;
+          }
+        }
+        rows[col][row] = candidate;
+        if (candidate !== nominal) adjusted = true;
+      }
+    }
+  }
   for (let i = 0; i < size * size; i++) {
-    const left = Math.round(((i % size) * meta.width) / size),
-      top = Math.round((Math.floor(i / size) * meta.height) / size);
-    const width = Math.round((((i % size) + 1) * meta.width) / size) - left,
-      height =
-        Math.round(((Math.floor(i / size) + 1) * meta.height) / size) - top;
+    const col = i % size,
+      row = Math.floor(i / size);
+    const left = Math.round((col * meta.width) / size),
+      top = rows[col][row];
+    const width = Math.round(((col + 1) * meta.width) / size) - left,
+      height = rows[col][row + 1] - top;
     const { data, info } = await sharp(buffer, { limitInputPixels: 40_000_000 })
       .extract({ left, top, width, height })
       .resize({
-        width: 512,
-        height: 512,
+        width: 1024,
+        height: 1024,
         fit: "inside",
         withoutEnlargement: true,
       })
@@ -100,22 +151,24 @@ export async function reviewSheet(
       }
     if (r < 0) warnings.push("empty");
     else if (l < 2 || t < 2 || r >= w - 2 || b >= h - 2) warnings.push("edge");
+    if (r >= 0 && (i === 14 || single) && t < h * 0.12)
+      warnings.push("headroom");
     if (clear < w * h * 0.01) warnings.push("opaque");
     let image = sharp({
-      create: { width: 256, height: 256, channels: 4, background: "#00000000" },
+      create: { width: 512, height: 512, channels: 4, background: "#00000000" },
     });
     if (r >= 0) {
       const crop = await sharp(data, { raw: info })
         .extract({ left: l, top: t, width: r - l + 1, height: b - t + 1 })
-        .resize({ width: 180, height: 180, fit: "inside", kernel: "nearest" })
+        .resize({ width: 360, height: 360, fit: "inside", kernel: "lanczos3" })
         .png()
         .toBuffer();
       const m = await sharp(crop).metadata();
       image = image.composite([
         {
           input: crop,
-          left: Math.floor((256 - m.width) / 2),
-          top: 218 - m.height,
+          left: Math.floor((512 - m.width) / 2),
+          top: 436 - m.height,
         },
       ]);
     }
@@ -127,5 +180,5 @@ export async function reviewSheet(
       warnings,
     });
   }
-  return { cells: tiles };
+  return { cells: tiles, adjusted };
 }
