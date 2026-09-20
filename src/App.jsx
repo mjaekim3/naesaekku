@@ -315,7 +315,7 @@ export default function App({ initial = EMPTY }) {
             />
             <h2>② 그림 스타일 고르기</h2>
             <p className="hint">
-              너부리 캐릭터 기준 예시예요. 실제 결과는 첨부한 반려동물 사진과
+              너부리의 실제 사진을 바탕으로 만든 예시예요. 실제 결과는 첨부한 반려동물 사진과
               생성 결과에 따라 달라져요.
             </p>
             <div className="style-examples">
