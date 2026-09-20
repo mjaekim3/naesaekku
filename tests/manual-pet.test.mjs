@@ -83,3 +83,14 @@ test("ChatGPT workflow creates a personalized prompt and imports animation witho
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("new styles request high resolution and a smaller fully visible lift pose",()=>{
+ const studio=new Studio({dir:'.'});
+ for(const style of ['cartoon','realistic']){
+ const prompt=studio.chatPrompt({name:'너부리',features:'줄무늬 꼬리',style,sheetFormat:'lift-v2'});
+ expect(prompt).toContain('4096');
+ expect(prompt).toContain('25%');
+ expect(prompt).toContain('ear tips');
+ expect(prompt).toContain(style==='cartoon'?'만화 캐릭터':'실제와 비슷');
+ }
+});

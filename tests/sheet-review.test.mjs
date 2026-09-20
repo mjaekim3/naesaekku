@@ -22,15 +22,15 @@ test("review rescues edge touching cells, reports empty cells and emits importab
   expect(result.cells).toHaveLength(16);
   expect(result.cells[0].warnings).toContain("edge");
   expect(result.cells[15].warnings).toContain("empty");
-  const sheet = await sharp(await png(1024, 1024, "#00000000"))
+  const sheet = await sharp(await png(2048, 2048, "#00000000"))
     .composite(
       result.cells.map((c, i) => ({
         input: Buffer.from(
           (i === 15 ? result.cells[0] : c).image.split(",")[1],
           "base64",
         ),
-        left: (i % 4) * 256,
-        top: Math.floor(i / 4) * 256,
+        left: (i % 4) * 512,
+        top: Math.floor(i / 4) * 512,
       })),
     )
     .png()
@@ -96,4 +96,12 @@ test("studio review validates bytes and reuses repaired cells without paid servi
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("review keeps 512px tiles and explicitly flags insufficient lift headroom", async()=>{
+ const source=await sharp(await png(256,256,'#00000000')).composite([{input:await png(20,50,'#aa7755'),left:138,top:192}]).png().toBuffer();
+ const r=await reviewSheet(source);
+ expect(r.cells[14].warnings).toContain('headroom');
+ const meta=await sharp(Buffer.from(r.cells[14].image.split(',')[1],'base64')).metadata();
+ expect(meta.width).toBe(512);
 });
