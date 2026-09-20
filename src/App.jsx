@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Heart,
-  Plus,
   Sparkles,
   Images,
-  Settings,
   ArrowUpRight,
   ArrowRight,
-  Upload,
   Check,
   X,
   Download,
@@ -17,77 +14,31 @@ import {
   Flower2,
   ImagePlus,
   ShieldCheck,
-  LoaderCircle,
-  Eye,
   FolderHeart,
 } from "lucide-react";
 import { bridge } from "./bridge.js";
 import PetPreview from "./PetPreview.jsx";
 import { version } from "../package.json";
 const EMPTY = { photos: [], artworks: [], jobs: [], hasKey: false };
-const Icon = ({ children }) => <span className="icon">{children}</span>;
 export default function App({ initial = EMPTY }) {
   const [data, setData] = useState(initial),
     [page, setPage] = useState("studio"),
-    [selected, setSelected] = useState(initial.artworks[0]?.id || null),
-    [photoIds, setPhotoIds] = useState(
-      initial.photos.slice(0, 3).map((p) => p.id),
-    );
-  const [name, setName] = useState(""),
-    [features, setFeatures] = useState(""),
-    [style, setStyle] = useState("pixel"),
-    [quality, setQuality] = useState("medium"),
-    [consent, setConsent] = useState(false),
-    [edit, setEdit] = useState("");
-  const [settings, setSettings] = useState(false),
-    [key, setKey] = useState(""),
-    [remember, setRemember] = useState(true),
-    [toast, setToast] = useState(""),
+    [selected, setSelected] = useState(initial.artworks[0]?.id || null);
+  const [name, setName] = useState("너부리"),
+    [features, setFeatures] = useState("꼬리가 보노보노의 너부리 같음"),
+    [style, setStyle] = useState("pixel");
+  const [toast, setToast] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(null),
-    [elapsed, setElapsed] = useState(0),
     [playing, setPlaying] = useState(false),
     [closed, setClosed] = useState(false),
     [pixel, setPixel] = useState(false),
     [view, setView] = useState(null),
     [blinkView, setBlinkView] = useState(null),
     [working, setWorking] = useState(false);
-  const files = useRef(),
-    sheetFile = useRef(),
+  const sheetFile = useRef(),
     artFile = useRef(),
-    polling = useRef(false),
     initialized = useRef(false);
   const [chatPrompt, setChatPrompt] = useState("");
-  const [localStatus, setLocalStatus] = useState(null);
-  async function checkLocal() {
-    setWorking(true);
-    try {
-      setLocalStatus(await bridge.localStatus());
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setWorking(false);
-    }
-  }
-  async function startLocal() {
-    setError("");
-    setWorking(true);
-    try {
-      const j = await bridge.startLocal({
-        name: name.trim(),
-        features,
-        style,
-        photoIds,
-      });
-      setBusy(j);
-      setElapsed(0);
-      setPlaying(false);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setWorking(false);
-    }
-  }
   async function copyPrompt() {
     setError("");
     try {
@@ -144,12 +95,13 @@ export default function App({ initial = EMPTY }) {
     refresh()
       .then((next) => {
         setSelected((current) => current || next.artworks[0]?.id || null);
-        setPhotoIds(next.photos.slice(0, 3).map((p) => p.id));
         try {
-          const saved = JSON.parse(localStorage.getItem("ongi-form") || "null");
+          const saved = JSON.parse(
+            localStorage.getItem("pawside-sheet-form-v2") || "null",
+          );
           if (saved) {
-            setName(saved.name || "");
-            setFeatures(saved.features || "");
+            setName(saved.name ?? "너부리");
+            setFeatures(saved.features ?? "꼬리가 보노보노의 너부리 같음");
             setStyle(saved.style || "pixel");
           }
         } catch {}
@@ -161,7 +113,7 @@ export default function App({ initial = EMPTY }) {
     if (initialized.current)
       try {
         localStorage.setItem(
-          "ongi-form",
+          "pawside-sheet-form-v2",
           JSON.stringify({ name, features, style }),
         );
       } catch {}
@@ -193,122 +145,26 @@ export default function App({ initial = EMPTY }) {
     const timer = setTimeout(() => setClosed(!closed), closed ? 180 : 2600);
     return () => clearTimeout(timer);
   }, [playing, closed]);
-  useEffect(() => {
-    if (!busy) return;
-    const timer = setInterval(async () => {
-      setElapsed(Math.floor((Date.now() - busy.startedAt) / 1000));
-      if (polling.current) return;
-      polling.current = true;
-      try {
-        const j = await bridge.job(busy.id);
-        if (j?.status === "running" && j.stage !== busy.stage) setBusy(j);
-        if (j && j.status !== "running") {
-          setBusy(null);
-          if (j.status === "complete") {
-            await refresh();
-            if (j.mode !== "blink") setSelected(j.artworkId);
-            notify(
-              j.mode === "blink"
-                ? "눈 깜빡임 프레임이 준비됐어요. 재생해서 확인해주세요."
-                : "새로운 모습이 보관함에 저장됐어요.",
-            );
-          } else if (j.status === "error") {
-            setError(j.error);
-            await refresh();
-            if (j.masterId) setSelected(j.masterId);
-          } else
-            notify(
-              j.mode === "local"
-                ? "로컬 생성을 취소했어요."
-                : "요청을 취소했어요. 이미 처리된 요청에는 비용이 발생할 수 있어요.",
-            );
-        }
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        polling.current = false;
-      }
-    }, 1200);
-    return () => clearInterval(timer);
-  }, [busy]);
-  async function importFiles(list, isArtwork = false) {
+  async function importFiles(list) {
+    const file = list?.[0];
+    if (!file) return;
     setWorking(true);
     setError("");
     try {
-      const chosen = Array.from(list);
-      if (!chosen.length) return;
-      if (chosen.length > (isArtwork ? 1 : 5))
-        throw Error("참고 사진은 최대 5장, 그림은 한 장씩 가져와주세요.");
-      const encoded = await Promise.all(
-        chosen.map(async (f) => {
-          if (f.size > 20 * 1024 * 1024)
-            throw Error("사진 한 장은 20MB 이하여야 해요.");
-          return {
-            name: f.name,
-            bytes: Array.from(new Uint8Array(await f.arrayBuffer())),
-          };
-        }),
-      );
-      if (isArtwork) {
-        const item = await bridge.importArtwork(encoded[0]);
-        await refresh();
-        setSelected(item.id);
-        notify("가져온 그림을 보관함에 저장했어요.");
-      } else {
-        const photos = await bridge.importPhotos(encoded);
-        await refresh();
-        setPhotoIds((current) =>
-          [...new Set([...current, ...photos.map((p) => p.id)])].slice(-5),
-        );
-      }
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setWorking(false);
-      if (files.current) files.current.value = "";
-      if (artFile.current) artFile.current.value = "";
-    }
-  }
-  async function start(mode) {
-    setError("");
-    if (!data.hasKey) {
-      setSettings(true);
-      return;
-    }
-    try {
-      const j = await bridge.start({
-        name: name.trim(),
-        features,
-        style,
-        quality,
-        consent,
-        photoIds,
-        mode,
-        baseId: selected,
-        instruction: edit,
+      if (file.size > 20 * 1024 * 1024)
+        throw Error("그림은 20MB 이하여야 해요.");
+      const item = await bridge.importArtwork({
+        name: file.name,
+        bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
       });
-      setBusy(j);
-      setElapsed(0);
-      setPlaying(false);
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-  async function saveKey() {
-    setWorking(true);
-    setError("");
-    try {
-      await bridge.saveKey({ key: key.trim(), remember });
-      setKey("");
       await refresh();
-      setSettings(false);
-      notify(
-        "API 키를 저장했어요. 생성 버튼을 누르면 연결을 확인하고 이미지를 요청합니다.",
-      );
+      setSelected(item.id);
+      notify("가져온 그림을 보관함에 저장했어요.");
     } catch (e) {
       setError(e.message);
     } finally {
       setWorking(false);
+      if (artFile.current) artFile.current.value = "";
     }
   }
   async function exportImage(format) {
@@ -326,9 +182,6 @@ export default function App({ initial = EMPTY }) {
       setWorking(false);
     }
   }
-  const ready =
-    !!name.trim() && photoIds.length > 0 && consent && !busy && !working;
-  const editReady = !!artwork && !!name.trim() && consent && !busy && !working;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -367,20 +220,6 @@ export default function App({ initial = EMPTY }) {
           </p>
           <span>ALWAYS, BY YOUR SIDE.</span>
         </div>
-        <button className="connection" onClick={() => setSettings(true)}>
-          <span
-            className={data.hasKey ? "status-dot connected" : "status-dot"}
-          />
-          <div>
-            {data.hasKey ? "API 키 저장됨" : "OpenAI 연결 · 선택"}
-            <small>
-              {data.hasKey
-                ? "생성할 때 연결을 확인해요"
-                : "로컬 생성에는 필요 없어요"}
-            </small>
-          </div>
-          <Settings size={16} />
-        </button>
         <div className="version">
           내새꾸, 내곁에 <span>v{version}</span>
         </div>
@@ -394,13 +233,6 @@ export default function App({ initial = EMPTY }) {
           <div>
             <ShieldCheck size={14} />
             추억은 내 PC에 보관돼요
-            <button
-              className="icon-button"
-              title="설정"
-              onClick={() => setSettings(true)}
-            >
-              <Settings size={17} />
-            </button>
           </div>
         </header>
         <section className="page-head">
@@ -445,8 +277,9 @@ export default function App({ initial = EMPTY }) {
               완성된 시트가 있다면 이름을 입력하고 ‘③ 동작 시트 가져오기’를 눌러
               PNG 파일을 선택하세요. 프롬프트 복사는 건너뛰어도 돼요.
             </p>
+            <h3>우리 아이 소개</h3>
             <label className="field-label" htmlFor="sheet-pet-name">
-              아이 이름
+              아이의 이름
             </label>
             <input
               id="sheet-pet-name"
@@ -463,8 +296,19 @@ export default function App({ initial = EMPTY }) {
               value={features}
               maxLength={2000}
               onChange={(e) => setFeatures(e.target.value)}
-              placeholder="예: 고양이, 초록 눈, 주황색 줄무늬, 자연스럽게 다문 입"
+              placeholder="꼬리가 보노보노의 너부리 같음"
             />
+            <label className="field-label" htmlFor="sheet-style">
+              그림 스타일
+            </label>
+            <select
+              id="sheet-style"
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+            >
+              <option value="pixel">픽셀 아트</option>
+              <option value="storybook">포근한 일러스트</option>
+            </select>
             <p className="hint">
               가져오기에 성공하면 보관함에 저장돼요. 아래 미리보기에서 동작을
               확인하고 ‘바탕화면에 데려오기’를 누르세요. 실패하면 이 패널 아래에
@@ -489,7 +333,7 @@ export default function App({ initial = EMPTY }) {
             >
               <button
                 className="primary"
-                disabled={!name.trim() || working || !!busy}
+                disabled={!name.trim() || working}
                 onClick={copyPrompt}
               >
                 ① 프롬프트 복사
@@ -504,7 +348,7 @@ export default function App({ initial = EMPTY }) {
               </button>
               <button
                 className="outline-button"
-                disabled={!name.trim() || working || !!busy}
+                disabled={!name.trim() || working}
                 onClick={() => sheetFile.current.click()}
               >
                 {working ? "처리 중…" : "③ 동작 시트 가져오기"}
@@ -533,54 +377,6 @@ export default function App({ initial = EMPTY }) {
             </p>
           </section>
         )}
-        {page === "studio" && (
-          <details
-            className="panel"
-            style={{ margin: "0 0 24px", padding: 24 }}
-          >
-            <summary style={{ fontSize: 16 }}>
-              다른 방법: 이 PC에서 만들기 · 실험 기능
-            </summary>
-            <p className="hint">
-              아래에서 사진과 이름을 등록하면 Ollama가 특징을 읽고 ComfyUI가
-              기본 모습과 동작을 그려요. API 키나 사용료 없이 이 PC에서
-              처리해요.
-            </p>
-            <p className="hint">
-              로컬 AI를 먼저 실행해주세요. 생성 중에는 GPU를 사용하며 수 분 이상
-              걸릴 수 있어요. 동작이나 무늬가 달라질 수 있으니 완성된 미리보기를
-              확인해주세요.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 16,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                className="outline-button"
-                disabled={working || !!busy}
-                onClick={checkLocal}
-              >
-                로컬 AI 연결 확인
-              </button>
-              <button
-                className="primary"
-                disabled={!name.trim() || !photoIds.length || working || !!busy}
-                onClick={startLocal}
-              >
-                사진으로 로컬 동작 만들기
-              </button>
-            </div>
-            {localStatus && (
-              <p className="hint" role="status">
-                {localStatus.message}
-              </p>
-            )}
-          </details>
-        )}
         <input
           ref={sheetFile}
           type="file"
@@ -589,19 +385,11 @@ export default function App({ initial = EMPTY }) {
           onChange={(e) => importSheet(e.target.files?.[0])}
         />
         <input
-          ref={files}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          multiple
-          hidden
-          onChange={(e) => importFiles(e.target.files)}
-        />
-        <input
           ref={artFile}
           type="file"
           accept="image/png,image/jpeg,image/webp"
           hidden
-          onChange={(e) => importFiles(e.target.files, true)}
+          onChange={(e) => importFiles(e.target.files)}
         />
         {error && (
           <div className="error" role="alert">
@@ -661,154 +449,7 @@ export default function App({ initial = EMPTY }) {
             )}
           </section>
         ) : (
-          <div className="workspace">
-            <section className="input-panel panel">
-              <div className="section-heading">
-                <h2>
-                  <span className="step-number">01</span>우리 아이 소개
-                </h2>
-                <span>사진 + 이야기</span>
-              </div>
-              <div className="field-head">
-                <label>참고 사진</label>
-                <small>{photoIds.length} / 5</small>
-              </div>
-              <div
-                className="dropzone"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  importFiles(e.dataTransfer.files);
-                }}
-              >
-                <button
-                  className="upload-button"
-                  onClick={() => files.current.click()}
-                  disabled={working || !!busy}
-                >
-                  <div className="upload-icon">
-                    <Upload size={21} />
-                  </div>
-                  <strong>사진 추가</strong>
-                  <span>클릭하거나 여기에 끌어다 놓으세요</span>
-                  <small>JPG, PNG, WebP · 한 장당 최대 20MB</small>
-                </button>
-              </div>
-              {data.photos.length > 0 && (
-                <div className="photo-strip">
-                  {data.photos.slice(0, 12).map((p) => (
-                    <button
-                      key={p.id}
-                      className={
-                        photoIds.includes(p.id) ? "photo selected" : "photo"
-                      }
-                      title={p.name}
-                      aria-label={`${p.name} ${photoIds.includes(p.id) ? "선택 해제" : "선택"}`}
-                      onClick={() =>
-                        setPhotoIds((ids) =>
-                          ids.includes(p.id)
-                            ? ids.filter((i) => i !== p.id)
-                            : ids.length < 5
-                              ? [...ids, p.id]
-                              : ids,
-                        )
-                      }
-                    >
-                      <img src={p.thumbnail} alt={p.name} />
-                      {photoIds.includes(p.id) && (
-                        <span>
-                          <Check size={11} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="hint">
-                얼굴과 털 무늬가 잘 보이는 사진이면 좋아요.
-              </p>
-              <label className="field-label" htmlFor="pet-name">
-                아이의 이름
-              </label>
-              <input
-                id="pet-name"
-                placeholder="예: 터치"
-                value={name}
-                maxLength={40}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <label className="field-label" htmlFor="traits">
-                꼭 닮았으면 하는 특징 <span>선택</span>
-              </label>
-              <textarea
-                id="traits"
-                rows={3}
-                maxLength={2000}
-                placeholder="이마의 하얀 하트, 분홍빛 입가, 혀를 쏙 내밀고 웃는 모습…"
-                value={features}
-                onChange={(e) => setFeatures(e.target.value)}
-              />
-              <label className="field-label">그림 스타일</label>
-              <div className="style-options">
-                <button
-                  className={style === "pixel" ? "style selected" : "style"}
-                  onClick={() => setStyle("pixel")}
-                >
-                  <span className="pixel-heart">♥</span>
-                  <strong>픽셀 아트</strong>
-                  <small>작고 또렷한 추억</small>
-                  {style === "pixel" && <Check size={13} />}
-                </button>
-                <button
-                  className={style === "storybook" ? "style selected" : "style"}
-                  onClick={() => setStyle("storybook")}
-                >
-                  <Flower2 size={24} />
-                  <strong>포근한 일러스트</strong>
-                  <small>부드러운 그림책처럼</small>
-                  {style === "storybook" && <Check size={13} />}
-                </button>
-              </div>
-              <div className="quality-row">
-                <label htmlFor="quality">생성 품질</label>
-                <select
-                  id="quality"
-                  value={quality}
-                  onChange={(e) => setQuality(e.target.value)}
-                >
-                  <option value="low">가볍게 시도</option>
-                  <option value="medium">균형 있게 · 추천</option>
-                  <option value="high">더 세밀하게</option>
-                </select>
-              </div>
-              <label className="consent">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                />
-                <span>
-                  선택한 사진과 설명을 이미지 생성을 위해 OpenAI로 전송하는 데
-                  동의해요.
-                </span>
-              </label>
-              <button
-                className="primary generate"
-                disabled={!ready}
-                onClick={() => start("pet")}
-              >
-                {busy ? (
-                  <LoaderCircle className="spin" size={18} />
-                ) : (
-                  <Sparkles size={18} />
-                )}
-                움직이는 내새꾸 만들기
-                <ArrowRight size={16} />
-              </button>
-              <p className="cost-note">
-                기본 모습 + 동작 시트 · 최대 2회 이미지 요청 · API 사용료 별도
-              </p>
-            </section>
+          <div className="workspace" style={{ gridTemplateColumns: "1fr" }}>
             <section className="result-panel">
               <div className="panel canvas-panel">
                 <div className="section-heading">
@@ -853,26 +494,9 @@ export default function App({ initial = EMPTY }) {
                       <p>
                         사진 속 작은 특징까지 담아
                         <br />
-                        따뜻한 모습으로 만들어드릴게요.
+                        ChatGPT에서 시트를 만든 뒤 가져와주세요.
                       </p>
                       <span>YOUR FRIEND, IN A NEW LITTLE WORLD</span>
-                    </div>
-                  )}
-                  {busy && (
-                    <div className="generation-overlay">
-                      <LoaderCircle className="spin" size={28} />
-                      <strong>
-                        {busy.stage ||
-                          (busy.mode === "blink"
-                            ? "살짝 눈을 감는 중이에요"
-                            : busy.mode === "refine"
-                              ? "원하는 모습으로 다듬고 있어요"
-                              : "사진 속 모습을 그리고 있어요")}
-                      </strong>
-                      <p>{elapsed}초 경과 · 창을 닫지 말아주세요</p>
-                      <button onClick={() => bridge.cancel(busy.id)}>
-                        요청 취소
-                      </button>
                     </div>
                   )}
                   <div className="stage-floor" />
@@ -887,7 +511,7 @@ export default function App({ initial = EMPTY }) {
                       : "아직 생성된 그림이 없어요"}
                   </span>
                   <span>
-                    {artwork?.name || "사진을 추가해 시작하세요"}
+                    {artwork?.name || "동작 시트를 가져와 시작하세요"}
                     {artwork && <Heart size={13} />}
                   </span>
                 </div>
@@ -895,7 +519,7 @@ export default function App({ initial = EMPTY }) {
                   {artwork?.hasMotion && (
                     <button
                       className="primary"
-                      disabled={working || !!busy}
+                      disabled={working}
                       onClick={async () => {
                         setWorking(true);
                         try {
@@ -915,7 +539,7 @@ export default function App({ initial = EMPTY }) {
                   )}
                   <button
                     className="outline-button"
-                    disabled={!blink || pixel || !!busy}
+                    disabled={!blink || pixel}
                     onClick={() => setPlaying((p) => !p)}
                   >
                     {playing ? <Pause size={15} /> : <Play size={15} />}눈
@@ -941,63 +565,6 @@ export default function App({ initial = EMPTY }) {
                   </div>
                 </div>
               </div>
-              <div className="panel polish-panel">
-                <div className="section-heading">
-                  <h2>
-                    <span className="step-number">03</span>조금 더 우리 아이답게
-                  </h2>
-                  <Heart size={16} />
-                </div>
-                <div className="refine-row">
-                  <input
-                    aria-label="수정 요청"
-                    value={edit}
-                    maxLength={1000}
-                    onChange={(e) => setEdit(e.target.value)}
-                    placeholder="예: 이마의 하트를 조금 더 크게 해줘"
-                  />
-                  <button
-                    className="small-primary"
-                    disabled={!editReady || !edit.trim()}
-                    onClick={() => start("refine")}
-                  >
-                    다듬기
-                    <ArrowUpRight size={15} />
-                  </button>
-                </div>
-                <button
-                  className="blink-button"
-                  disabled={!editReady}
-                  onClick={() => start("motion")}
-                >
-                  <Sparkles size={21} />
-                  <span>
-                    <strong>이 모습으로 동작 만들기</strong>
-                    <small>
-                      걷기·대기·수면·간식 · 이미지 요청 1회, 별도 과금
-                    </small>
-                  </span>
-                </button>
-                <button
-                  className="blink-button"
-                  disabled={!editReady}
-                  onClick={() => start("blink")}
-                >
-                  <span className="blink-icon">
-                    <Eye size={21} />
-                  </span>
-                  <span>
-                    <strong>살짝 눈을 깜빡이게 해주세요</strong>
-                    <small>
-                      선택한 그림을 기준으로 새로운 표정 1장을 만들어요.
-                    </small>
-                  </span>
-                  <Plus size={18} />
-                </button>
-                <p className="hint">
-                  움직임을 만든 뒤, 얼굴과 무늬가 잘 유지됐는지 확인해주세요.
-                </p>
-              </div>
             </section>
           </div>
         )}
@@ -1010,83 +577,6 @@ export default function App({ initial = EMPTY }) {
         <div className="toast" role="status">
           <Check size={17} />
           {toast}
-        </div>
-      )}
-      {settings && (
-        <div className="modal-backdrop" onClick={() => setSettings(false)}>
-          <section
-            className="settings-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="close-modal"
-              onClick={() => setSettings(false)}
-              aria-label="설정 닫기"
-            >
-              <X size={19} />
-            </button>
-            <div className="modal-icon">
-              <Sparkles size={25} />
-            </div>
-            <h2 id="settings-title">그림을 그릴 준비</h2>
-            <p>
-              개인용 OpenAI API 키를 연결해주세요.
-              <br />
-              ChatGPT 구독과 별도로 API 사용료가 발생합니다.
-            </p>
-            <label className="field-label" htmlFor="api-key">
-              OpenAI API 키
-            </label>
-            <input
-              id="api-key"
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder={data.hasKey ? "새 키를 입력하면 교체돼요" : "sk-…"}
-            />
-            <label className="consent">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              <span>이 PC에 암호화해서 저장하기</span>
-            </label>
-            <p className="hint">
-              키는 생성 작업에만 사용하며, 그림이나 보관함에 기록하지 않아요.
-              저장을 해제하면 앱 종료 시 잊습니다.
-            </p>
-            <button
-              className="primary"
-              disabled={key.length < 12 || working}
-              onClick={saveKey}
-            >
-              {working ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <Check size={16} />
-              )}
-              연결하고 시작하기
-            </button>
-            {data.hasKey && (
-              <button
-                className="text-button disconnect"
-                onClick={async () => {
-                  await bridge.saveKey({ key: "", remember: false });
-                  await refresh();
-                  setSettings(false);
-                  notify("저장된 API 키를 해제했어요.");
-                }}
-              >
-                저장된 키 해제
-              </button>
-            )}
-          </section>
         </div>
       )}
     </div>
