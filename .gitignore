@@ -7,3 +7,4 @@ coverage/
 *.log
 .env
 test-results/
+release-0.8.2/
