@@ -2,6 +2,12 @@ import { test, expect } from "vitest";
 import { buildPrompt } from "../core/studio.mjs";
 import { motionGroupPrompt } from "../core/motion-import.mjs";
 import { motionPrompt } from "../core/pet-pack.mjs";
+test("full sheet prompt reserves generous transparent cell gutters", () => {
+  const prompt = motionPrompt("너부리");
+  expect(prompt).toContain("central 65%");
+  expect(prompt).toContain("at least 15%");
+  expect(prompt).toContain("Do not crop the canvas");
+});
 test("cat and generic pet prompts preserve species and natural mouth instead of prescribing a dog smile", () => {
   const r = {
     name: "너부리",
