@@ -57,7 +57,46 @@ let updates;
 let registration;
 let currentPack = null;
 let changePet;
+// The built-in Nerburi runs as a full work-area overlay (see
+// src/neoburie/main.js); registered pets keep the 220 × 230 window.
+let overlay = false,
+  overlayPlace = null,
+  hoverWanted = false,
+  lastCursor = "";
 const petName = () => currentPack?.manifest.name || "너부리";
+const overlayWanted = () => !currentPack && !smoke;
+const pageURL = () =>
+  overlay ? "app://pet/neoburie.html" : "app://pet/pet.html";
+const command = (name) => {
+  if (ready && overlay) pet.webContents.send("pet:command", name);
+};
+function overlayDisplay() {
+  const displays = screen.getAllDisplays();
+  return (
+    displays.find((d) => d.id === overlayPlace?.displayId) ||
+    screen.getPrimaryDisplay()
+  );
+}
+function applyWindowMode() {
+  overlay = overlayWanted();
+  lastBounds = "";
+  lastCursor = "";
+  hoverWanted = false;
+  if (overlay) {
+    const d = overlayDisplay();
+    if (overlayPlace?.displayId !== d.id) overlayPlace = { displayId: d.id };
+    pet.setBounds(d.workArea, false);
+  } else
+    pet.setBounds(
+      {
+        x: Math.round(model.x),
+        y: Math.round(model.y),
+        width: 220,
+        height: 230,
+      },
+      false,
+    );
+}
 const registrationSmoke = process.argv.includes("--registration-smoke");
 async function openRegistration() {
   try {
@@ -114,6 +153,7 @@ function save() {
   const value = JSON.stringify({
     ...model.snapshot(),
     petId: currentPack?.manifest.id || null,
+    neoburie: overlayPlace,
   });
   saveChain = saveChain
     .catch(() => {})
@@ -135,6 +175,7 @@ function sendView(force = false) {
   }
 }
 function position() {
+  if (overlay) return;
   const x = Math.round(model.x),
     y = Math.round(model.y),
     key = `${x},${y}`;
@@ -152,6 +193,7 @@ function ignore(value) {
 function show() {
   visible = true;
   ignore(true);
+  command("rehover");
   pet.showInactive();
   last = Date.now();
   sendView(true);
@@ -166,6 +208,9 @@ function hide() {
 }
 function act(action) {
   model.act(action);
+  if (overlay && action === "walk") command("roam");
+  else if (overlay && ["pause", "sleep", "wake"].includes(action))
+    command(action);
   sendView(true);
   save();
   refreshTray();
@@ -186,6 +231,7 @@ function items() {
     },
     {
       label: "쓰다듬기",
+      visible: !overlay,
       click: () => {
         show();
         act("pet");
@@ -193,14 +239,15 @@ function items() {
     },
     {
       label: "간식 주기",
+      visible: !overlay,
       click: () => {
         show();
         act("eat");
       },
     },
     {
-      label: model.state === "sleep" ? "깨우기" : "잠자기",
-      click: () => act(model.state === "sleep" ? "wake" : "sleep"),
+      label: sleeping() ? "깨우기" : "잠자기",
+      click: () => act(sleeping() ? "wake" : "sleep"),
     },
     {
       label: "자유롭게 걷기",
@@ -214,6 +261,14 @@ function items() {
       submenu: screen.getAllDisplays().map((d, i) => ({
         label: `모니터 ${i + 1} · ${d.label || `${d.size.width} × ${d.size.height}`}`,
         click: () => {
+          if (overlay) {
+            overlayPlace = { displayId: d.id };
+            applyWindowMode();
+            command("arrive");
+            save();
+            show();
+            return;
+          }
           const a = d.workArea;
           model.x = a.x + a.width / 2 - 110;
           model.y = a.y + a.height - 254;
@@ -231,7 +286,9 @@ function items() {
         show();
         pet.webContents.send(
           "pet:message",
-          "드래그로 다른 화면에 · 클릭하면 쓰다듬기",
+          overlay
+            ? "오른쪽 클릭하면 그 자리에서 자요 · 클릭하면 깨요"
+            : "드래그로 다른 화면에 · 클릭하면 쓰다듬기",
         );
       },
     },
@@ -244,6 +301,9 @@ function items() {
     { label: `버전 ${app.getVersion()}`, enabled: false },
     { label: "종료", click: () => app.quit() },
   ];
+}
+function sleeping() {
+  return overlay ? !!overlayPlace?.sleeping : model.state === "sleep";
 }
 function refreshTray() {
   if (tray) tray.setContextMenu(Menu.buildFromTemplate(items()));
@@ -295,6 +355,8 @@ else {
         y: saved.y,
         roaming: saved.roaming,
       });
+      if (saved.neoburie && Number.isFinite(saved.neoburie.displayId))
+        overlayPlace = saved.neoburie;
       let masks = await fs.readFile(path.join(root, "pet/alpha.bin"));
       const { loadPetPack, validPackId } = await import("../core/pet-pack.mjs");
       if (saved.petId) {
@@ -355,7 +417,8 @@ else {
         lastView = "";
         await save();
         tray.setToolTip(title + " · " + petName());
-        await pet.loadURL("app://pet/pet.html");
+        applyWindowMode();
+        await pet.loadURL(pageURL());
         show();
       };
       registration = createRegistration({
@@ -409,11 +472,21 @@ else {
       const trusted = (e) =>
         e.sender === pet.webContents &&
         e.senderFrame === pet.webContents.mainFrame &&
-        e.senderFrame.url === "app://pet/pet.html";
+        e.senderFrame.url === pageURL();
       ipcMain.handle("pet:ready", (e) => {
         if (!trusted(e)) throw Error("Forbidden");
         ready = true;
         return {
+          place:
+            overlay && Number.isFinite(overlayPlace?.x)
+              ? {
+                  x: overlayPlace.x,
+                  y: overlayPlace.y,
+                  sleeping: !!overlayPlace.sleeping,
+                  anchored: !!overlayPlace.anchored,
+                }
+              : null,
+          roaming: model.roaming,
           view: model.view(),
           spriteBase: currentPack
             ? `app://pet/packs/${currentPack.manifest.id}/`
@@ -425,6 +498,27 @@ else {
         model.beginDrag(screen.getCursorScreenPoint());
         ignore(false);
         sendView(true);
+      });
+      ipcMain.on("pet:hover", (e, value) => {
+        if (!trusted(e) || !overlay) return;
+        hoverWanted = value === true;
+        if (!menuOpen) ignore(!hoverWanted);
+      });
+      let placeTimer;
+      ipcMain.on("pet:place", (e, value) => {
+        if (!trusted(e) || !overlay) return;
+        if (!Number.isFinite(value?.x) || !Number.isFinite(value?.y)) return;
+        const wasSleeping = sleeping();
+        overlayPlace = {
+          displayId: overlayDisplay().id,
+          x: Math.round(value.x),
+          y: Math.round(value.y),
+          sleeping: value.sleeping === true,
+          anchored: value.anchored === true,
+        };
+        if (wasSleeping !== sleeping()) refreshTray();
+        clearTimeout(placeTimer);
+        placeTimer = setTimeout(save, 3000);
       });
       function endDrag() {
         if (model.state !== "drag") return;
@@ -448,12 +542,17 @@ else {
           callback: () => {
             menuOpen = false;
             last = Date.now();
+            if (overlay) {
+              ignore(true);
+              command("rehover");
+            }
           },
         });
       });
       function recoverDisplays() {
         endDrag();
         model.updateDisplays(screen.getAllDisplays());
+        if (overlay) applyWindowMode();
         position();
         save();
         refreshTray();
@@ -491,7 +590,16 @@ else {
         const now = Date.now(),
           delta = now - last;
         last = now;
-        if (ready && visible && !suspended && !menuOpen) {
+        if (ready && visible && !suspended && !menuOpen && overlay) {
+          const cursor = screen.getCursorScreenPoint(),
+            bounds = pet.getBounds(),
+            local = { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
+            key = `${local.x},${local.y}`;
+          if (key !== lastCursor) {
+            lastCursor = key;
+            pet.webContents.send("pet:cursor", local);
+          }
+        } else if (ready && visible && !suspended && !menuOpen) {
           const cursor = screen.getCursorScreenPoint();
           if (model.state === "drag") model.dragTo(cursor);
           model.tick(delta);
@@ -515,7 +623,11 @@ else {
         }
         timer = setTimeout(
           loop,
-          !visible || suspended ? 1000 : model.state === "sleep" ? 100 : 33,
+          !visible || suspended
+            ? 1000
+            : !overlay && model.state === "sleep"
+              ? 100
+              : 33,
         );
       }
       // Smoke mode exercises the real renderer and native window on attached displays.
@@ -595,7 +707,8 @@ else {
           app.exit(2);
         }
       });
-      await pet.loadURL("app://pet/pet.html");
+      applyWindowMode();
+      await pet.loadURL(pageURL());
       if (registrationSmoke) {
         const w = await registration.open({ hidden: true });
         const photo = await fs.readFile(process.env.REGISTRATION_SMOKE_PHOTO);
@@ -718,7 +831,9 @@ else {
         show();
         pet.webContents.send(
           "pet:message",
-          `${petName()}예요. 드래그로 원하는 화면에 놓아주세요.`,
+          overlay
+            ? `${petName()}예요. 커서를 가까이 대보거나 들어서 옮겨보세요.`
+            : `${petName()}예요. 드래그로 원하는 화면에 놓아주세요.`,
         );
         loop();
       } else smokeTimeout = setTimeout(() => app.exit(2), 15000);
