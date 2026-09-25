@@ -1,7 +1,7 @@
 {
   "name": "너부리",
-  "width": 192,
-  "height": 192,
+  "width": 576,
+  "height": 576,
   "frames": 20,
   "source": "assets/nerburi-lift-sheet.png",
   "animations": {

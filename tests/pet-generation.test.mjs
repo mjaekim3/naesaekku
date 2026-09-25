@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Studio } from "../core/studio.mjs";
 import { preparePetSheet, loadPetPack } from "../core/pet-pack.mjs";
+import { FRAME_SIZE, MASK_SIZE } from "../core/frame-size.mjs";
 
 async function sheet() {
   const sprite = await sharp({
@@ -28,8 +29,8 @@ async function sheet() {
 test("sprite processing produces compatible frames and masks; rejects empty and opaque sheets", async () => {
   const pack = await preparePetSheet(await sheet());
   expect(pack.frames).toHaveLength(20);
-  expect(pack.alpha.length).toBe(20 * 192 * 192);
-  expect((await sharp(pack.frames[4]).metadata()).width).toBe(192);
+  expect(pack.alpha.length).toBe(20 * MASK_SIZE * MASK_SIZE);
+  expect((await sharp(pack.frames[4]).metadata()).width).toBe(FRAME_SIZE);
   const opaque = await sharp({
     create: { width: 256, height: 256, channels: 4, background: "#ffffff" },
   })
@@ -76,7 +77,7 @@ test("photo to master to motion pack persists across restart with two explicit A
     const id = studio.job(job.id).artworkId;
     const pack = await loadPetPack(dir, id);
     expect(pack.manifest.name).toBe("터치");
-    expect(pack.alpha.length).toBe(20 * 192 * 192);
+    expect(pack.alpha.length).toBe(20 * MASK_SIZE * MASK_SIZE);
     const reopened = await Studio.open({ dir });
     expect(await reopened.petFrames(id)).toHaveLength(20);
     expect(
@@ -149,4 +150,40 @@ test("failed motion preserves master; cancellation prevents second paid request"
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+test("packs saved with the earlier 192 px frames still load next to new 576 px packs", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pack-compat-"));
+  try {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const id = "00000000-0000-4000-8000-000000000192";
+    const root = join(dir, "pets", id);
+    await mkdir(root, { recursive: true });
+    const frame = await sharp({ create: { width: 192, height: 192, channels: 4, background: "#00000000" } }).png().toBuffer();
+    await Promise.all(Array.from({ length: 20 }, (_, i) => writeFile(join(root, `${i}.png`), frame)));
+    await writeFile(join(root, "alpha.bin"), Buffer.alloc(20 * MASK_SIZE * MASK_SIZE));
+    await writeFile(join(root, "manifest.json"), JSON.stringify({ version: 1, id, name: "예전 펫", frames: 20, size: 192, sheetFormat: "lift-v2" }));
+    expect((await loadPetPack(dir, id)).manifest.size).toBe(192);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test("a taller upright lifted cell does not shrink the other animations", async () => {
+  const sprite = (h) => sharp({ create: { width: 20, height: h, channels: 4, background: "#a0785a" } }).png().toBuffer();
+  const body = await sprite(30), lifted = await sprite(33);
+  const sheetPng = await sharp({ create: { width: 256, height: 256, channels: 4, background: "#00000000" } })
+    .composite(Array.from({ length: 16 }, (_, i) => ({ input: i === 14 ? lifted : body, left: (i % 4) * 64 + 22, top: Math.floor(i / 4) * 64 + 14 })))
+    .png()
+    .toBuffer();
+  const pack = await preparePetSheet(sheetPng);
+  const height = async (frame) => {
+    const { data, info } = await sharp(frame).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let top = info.height, bottom = -1;
+    for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) if (data[(y * info.width + x) * 4 + 3] > 128) { top = Math.min(top, y); bottom = Math.max(bottom, y); }
+    return bottom - top + 1;
+  };
+  // Idle (frame 4) fills the fit box as if the lifted cell were absent
+  // (504 px at 576); counting the lifted cell would have given ~458 px.
+  expect(await height(pack.frames[4])).toBeGreaterThan(470);
+  // The lifted frame (10) keeps the same scale, so it stays 10% taller.
+  expect((await height(pack.frames[10])) / (await height(pack.frames[4]))).toBeCloseTo(1.1, 1);
 });

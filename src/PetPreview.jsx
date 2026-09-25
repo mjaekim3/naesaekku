@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { bridge } from "./bridge.js";
 import { PetModel } from "../core/pet.mjs";
-export default function PetPreview({ id, liftEnabled = false }) {
+export default function PetPreview({ id, liftEnabled = false, greetingEnabled = false }) {
   const [frames, setFrames] = useState([]),
     [error, setError] = useState(""),
     [frame, setFrame] = useState(4),
@@ -28,6 +28,7 @@ export default function PetPreview({ id, liftEnabled = false }) {
       displays: [{ id: 1, workArea: { x: 0, y: 0, width: 1280, height: 800 } }],
       roaming: false,
       liftEnabled,
+      greetingEnabled,
     });
     model.act(action);
     const timer = setInterval(() => {
@@ -37,7 +38,7 @@ export default function PetPreview({ id, liftEnabled = false }) {
       if (model.state === "idle" && action !== "pause") model.act(action);
     }, 100);
     return () => clearInterval(timer);
-  }, [action, id, liftEnabled]);
+  }, [action, id, liftEnabled, greetingEnabled]);
   return (
     <div
       style={{
@@ -77,8 +78,8 @@ export default function PetPreview({ id, liftEnabled = false }) {
           ["walk", "걷기"],
           ["pause", "대기"],
           ["sleep", "수면"],
-          ["eat", "간식"],
-          ["pet", "쓰다듬기"],
+          ...(!greetingEnabled ? [["eat", "간식"]] : []),
+          ["pet", greetingEnabled ? "반겨주기" : "쓰다듬기"],
           ...(liftEnabled
             ? [
                 ["lift", "들기"],

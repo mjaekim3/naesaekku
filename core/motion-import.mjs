@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { removeChroma } from "./local-ai.mjs";
 import { NATURAL_APPEARANCE } from "./appearance-prompt.mjs";
+import { FIT_WIDTH, FIT_HEIGHT, FRAME_SIZE, placeSprite, frameMasks } from "./frame-size.mjs";
 export const MOTIONS = {
   walk: { columns: 4, rows: 2, count: 8 },
   idle: { columns: 2, rows: 1, count: 2 },
@@ -85,8 +86,8 @@ export async function splitMotion(buffer, action, background = "alpha") {
   const l = Math.min(...tiles.map((t) => t.l)),
     r = Math.max(...tiles.map((t) => t.r));
   const scale = Math.min(
-    176 / (r - l + 1),
-    168 / Math.max(...tiles.map((t) => t.b - t.t + 1)),
+    FIT_WIDTH / (r - l + 1),
+    FIT_HEIGHT / Math.max(...tiles.map((t) => t.b - t.t + 1)),
   );
   // Shared horizontal crop preserves the reference's torso anchor instead of
   // re-centering each frame whenever a paw/tail changes the silhouette width.
@@ -94,28 +95,11 @@ export async function splitMotion(buffer, action, background = "alpha") {
     tiles.map(async (t) => {
       const width = Math.max(1, Math.round((r - l + 1) * scale)),
         height = Math.max(1, Math.round((t.b - t.t + 1) * scale));
-      const tile = await sharp(t.data, { raw: t.info })
-        .extract({ left: l, top: t.t, width: r - l + 1, height: t.b - t.t + 1 })
-        .resize(width, height, { kernel: "nearest" })
-        .png()
-        .toBuffer();
-      return sharp({
-        create: {
-          width: 192,
-          height: 192,
-          channels: 4,
-          background: "#00000000",
-        },
-      })
-        .composite([
-          {
-            input: tile,
-            left: Math.floor((192 - width) / 2),
-            top: 184 - height,
-          },
-        ])
-        .png()
-        .toBuffer();
+      return placeSprite(
+        { data: t.data, info: t.info, region: { left: l, top: t.t, width: r - l + 1, height: t.b - t.t + 1 } },
+        width,
+        height,
+      );
     }),
   );
 }
@@ -130,17 +114,17 @@ export async function assembleMotion(groups) {
     for (const frame of groups[action]) {
       if (
         typeof frame?.image !== "string" ||
-        frame.image.length > 1_000_000 ||
+        frame.image.length > 4_000_000 ||
         !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(frame.image) ||
         typeof frame.flip !== "boolean"
       )
         throw Error("잘못된 동작 프레임이에요. PNG를 다시 가져와주세요.");
       const image = sharp(Buffer.from(frame.image.split(",")[1], "base64"), {
-        limitInputPixels: 192 * 192,
+        limitInputPixels: FRAME_SIZE * FRAME_SIZE,
       });
       const meta = await image.metadata();
-      if (meta.width !== 192 || meta.height !== 192 || !meta.hasAlpha)
-        throw Error("프레임은 192×192 투명 PNG여야 해요.");
+      if (meta.width !== FRAME_SIZE || meta.height !== FRAME_SIZE || !meta.hasAlpha)
+        throw Error(`프레임은 ${FRAME_SIZE}×${FRAME_SIZE} 투명 PNG여야 해요.`);
       normalized.push(await image.flop(frame.flip).png().toBuffer());
     }
   }
@@ -149,19 +133,15 @@ export async function assembleMotion(groups) {
     0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7,
   ];
   const frames = map.map((i) => normalized[i]);
-  const alpha = Buffer.concat(
-    await Promise.all(
-      frames.map((f) => sharp(f).extractChannel(3).raw().toBuffer()),
-    ),
-  );
+  const alpha = await frameMasks(frames);
   const sheet = await sharp({
-    create: { width: 768, height: 768, channels: 4, background: "#00000000" },
+    create: { width: FRAME_SIZE * 4, height: FRAME_SIZE * 4, channels: 4, background: "#00000000" },
   })
     .composite(
       normalized.map((input, i) => ({
         input,
-        left: (i % 4) * 192,
-        top: Math.floor(i / 4) * 192,
+        left: (i % 4) * FRAME_SIZE,
+        top: Math.floor(i / 4) * FRAME_SIZE,
       })),
     )
     .png()

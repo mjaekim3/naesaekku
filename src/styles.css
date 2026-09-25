@@ -275,6 +275,8 @@ h1 em {
   margin: 9px 0 0;
 }
 .outline-button {
+  color: inherit;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;

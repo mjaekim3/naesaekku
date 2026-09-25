@@ -4,7 +4,12 @@ export default defineConfig({
   build: {
     outDir: "dist",
     rolldownOptions: {
-      input: { studio: "index.html", pet: "pet.html", neoburie: "neoburie.html" },
+      input: {
+        studio: "index.html",
+        pet: "pet.html",
+        neoburie: "neoburie.html",
+        companion: "companion.html",
+      },
     },
   },
   server: { host: "127.0.0.1" },

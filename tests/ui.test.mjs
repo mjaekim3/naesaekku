@@ -10,8 +10,9 @@ test("registration defaults to one full sheet instead of per-action uploads", ()
   expect(html.indexOf("우리 아이 소개")).toBeLessThan(
     html.indexOf("프롬프트 복사"),
   );
-  expect(html).toContain('alt="너부리 만화 캐릭터 스타일 예시"');
-  expect(html).toContain('alt="너부리 실제와 비슷하게 예시"');
+  expect(html).toContain('aria-label="기본 너부리 그림체 참고"');
+  expect(html).not.toContain("실제와 비슷하게");
+  expect(html).toContain("반겨주기");
   expect(html).not.toContain("동작 만들기 · GPT 그림을 앱에서 정리");
 });
 test("empty studio explains photo workflow and never pretends an image is generated", () => {

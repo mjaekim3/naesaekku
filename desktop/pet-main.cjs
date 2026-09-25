@@ -16,6 +16,9 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const title = "내새꾸, 내곁에";
+const overlaySmoke = process.argv.includes("--overlay-smoke");
+if (overlaySmoke && !process.env.ONGI_DATA_DIR)
+  throw Error("Overlay smoke requires an isolated ONGI_DATA_DIR");
 const smoke =
   process.argv.includes("--pet-smoke") || process.argv.includes("--smoke");
 app.setPath(
@@ -64,9 +67,16 @@ let overlay = false,
   hoverWanted = false,
   lastCursor = "";
 const petName = () => currentPack?.manifest.name || "너부리";
-const overlayWanted = () => !currentPack && !smoke;
+// Every pet runs in the work-area overlay: the built-in Nerburi page, or the
+// companion page for registered packs. Smoke tests keep the small window.
+const overlayWanted = () => !smoke;
+const nerburiShown = () => overlay && !currentPack;
 const pageURL = () =>
-  overlay ? "app://pet/neoburie.html" : "app://pet/pet.html";
+  !overlay
+    ? "app://pet/pet.html"
+    : currentPack
+      ? "app://pet/companion.html"
+      : "app://pet/neoburie.html";
 const command = (name) => {
   if (ready && overlay) pet.webContents.send("pet:command", name);
 };
@@ -208,9 +218,8 @@ function hide() {
 }
 function act(action) {
   model.act(action);
-  if (overlay && action === "walk") command("roam");
-  else if (overlay && ["pause", "sleep", "wake"].includes(action))
-    command(action);
+  // The overlay page owns the live pet; the main model only keeps settings.
+  if (overlay) command(action === "walk" ? "roam" : action);
   sendView(true);
   save();
   refreshTray();
@@ -230,8 +239,8 @@ function items() {
       click: () => (visible ? hide() : show()),
     },
     {
-      label: "쓰다듬기",
-      visible: !overlay,
+      label: model.greetingEnabled ? "반겨주기" : "쓰다듬기",
+      visible: !nerburiShown(),
       click: () => {
         show();
         act("pet");
@@ -239,7 +248,7 @@ function items() {
     },
     {
       label: "간식 주기",
-      visible: !overlay,
+      visible: !nerburiShown() && !model.greetingEnabled,
       click: () => {
         show();
         act("eat");
@@ -286,9 +295,11 @@ function items() {
         show();
         pet.webContents.send(
           "pet:message",
-          overlay
+          nerburiShown()
             ? "오른쪽 클릭하면 그 자리에서 자요 · 클릭하면 깨요"
-            : "드래그로 다른 화면에 · 클릭하면 쓰다듬기",
+            : model.greetingEnabled
+              ? "드래그로 다른 화면에 · 클릭하면 반겨줘요"
+              : "드래그로 다른 화면에 · 클릭하면 쓰다듬기",
         );
       },
     },
@@ -367,8 +378,9 @@ else {
           currentPack = null;
         }
       }
+      model.greetingEnabled = currentPack?.manifest.sheetFormat === "companion-v1";
       model.liftEnabled = currentPack
-        ? currentPack.manifest.sheetFormat === "lift-v2"
+        ? ["lift-v2", "companion-v1"].includes(currentPack.manifest.sheetFormat)
         : true;
       if (masks.length !== FRAME_COUNT * 192 * 192)
         throw Error("Invalid sprite alpha masks");
@@ -408,8 +420,9 @@ else {
           pack?.alpha || (await fs.readFile(path.join(root, "pet/alpha.bin")));
         if (model.state === "drag") model.endDrag();
         currentPack = pack;
+        model.greetingEnabled = pack?.manifest.sheetFormat === "companion-v1";
         model.liftEnabled = pack
-          ? pack.manifest.sheetFormat === "lift-v2"
+          ? ["lift-v2", "companion-v1"].includes(pack.manifest.sheetFormat)
           : true;
         masks = nextMasks;
         model.act("wake");
@@ -487,6 +500,8 @@ else {
                 }
               : null,
           roaming: model.roaming,
+          liftEnabled: model.liftEnabled,
+          greetingEnabled: model.greetingEnabled,
           view: model.view(),
           spriteBase: currentPack
             ? `app://pet/packs/${currentPack.manifest.id}/`
@@ -709,6 +724,14 @@ else {
       });
       applyWindowMode();
       await pet.loadURL(pageURL());
+      if (overlaySmoke) {
+        smokeTimeout = setTimeout(() => app.exit(2), 45000);
+        const { runOverlaySmoke } = require("./overlay-smoke.cjs");
+        await runOverlaySmoke({ pet, dir, command, save, registration, screen });
+        clearTimeout(smokeTimeout);
+        app.quit();
+        return;
+      }
       if (registrationSmoke) {
         const w = await registration.open({ hidden: true });
         const photo = await fs.readFile(process.env.REGISTRATION_SMOKE_PHOTO);

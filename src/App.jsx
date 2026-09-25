@@ -26,8 +26,8 @@ export default function App({ initial = EMPTY }) {
     [page, setPage] = useState("studio"),
     [selected, setSelected] = useState(initial.artworks[0]?.id || null);
   const [name, setName] = useState("너부리"),
-    [features, setFeatures] = useState("꼬리가 보노보노의 너부리 같음"),
-    [style, setStyle] = useState("cartoon");
+    [features, setFeatures] = useState("꼬리가 보노보노의 너부리 같음");
+  const style = "cartoon";
   const [toast, setToast] = useState(""),
     [error, setError] = useState(""),
     [playing, setPlaying] = useState(false),
@@ -39,7 +39,7 @@ export default function App({ initial = EMPTY }) {
   const sheetFile = useRef(),
     artFile = useRef(),
     initialized = useRef(false);
-  const sheetFormat = "lift-v2";
+  const sheetFormat = "companion-v1";
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [autoSplit, setAutoSplit] = useState(true);
   const originalSheet = useRef(null);
@@ -52,7 +52,7 @@ export default function App({ initial = EMPTY }) {
       setChatPrompt(await bridge.chatPrompt(request));
       await bridge.copyChatPrompt(request);
       notify(
-        "프롬프트를 복사했어요. ChatGPT에서 원본 사진을 첨부하고 붙여넣어주세요.",
+        "프롬프트를 복사했어요. ChatGPT에 우리 아이 사진과 너부리 그림체 참고 이미지를 함께 첨부해주세요.",
       );
     } catch (e) {
       setError(e.message);
@@ -130,11 +130,6 @@ export default function App({ initial = EMPTY }) {
           if (saved) {
             setName(saved.name ?? "너부리");
             setFeatures(saved.features ?? "꼬리가 보노보노의 너부리 같음");
-            setStyle(
-              ["realistic", "storybook"].includes(saved.style)
-                ? "realistic"
-                : "cartoon",
-            );
           }
         } catch {}
         initialized.current = true;
@@ -361,42 +356,11 @@ export default function App({ initial = EMPTY }) {
               onChange={(e) => setFeatures(e.target.value)}
               placeholder="꼬리가 보노보노의 너부리 같음"
             />
-            <h2>② 그림 스타일 고르기</h2>
-            <p className="hint">
-              너부리의 기존 그림으로 비교하는 스타일 참고예요. 실제 결과는
-              첨부한 반려동물 사진과 생성 결과에 따라 달라져요.
-            </p>
-            <div className="style-examples">
-              {[
-                [
-                  "cartoon",
-                  "만화 캐릭터 스타일",
-                  "고유한 무늬를 살린 귀여운 2D 캐릭터",
-                  "./pet/4.png",
-                ],
-                [
-                  "realistic",
-                  "실제와 비슷하게",
-                  "실제 얼굴 비율과 섬세한 털 표현",
-                  "./examples/nerburi-storybook.png",
-                ],
-              ].map(([value, label, description, example]) => (
-                <button
-                  key={value}
-                  className={
-                    style === value ? "style-example selected" : "style-example"
-                  }
-                  aria-pressed={style === value}
-                  onClick={() => setStyle(value)}
-                >
-                  <img src={example} alt={`너부리 ${label} 예시`} />
-                  <strong>
-                    {label} {style === value ? "✓" : ""}
-                  </strong>
-                  <span>{description}</span>
-                </button>
-              ))}
-            </div>
+            <h2>② 너부리 그림체로 만들기</h2>
+            <p className="hint">그림체는 기본 너부리처럼 따뜻한 2D 캐릭터로 통일해요. 우리 아이의 얼굴·귀·꼬리·무늬는 원본 사진 그대로 살려요.</p>
+            <div role="img" aria-label="기본 너부리 그림체 참고" style={{width:150,height:200,backgroundImage:'url("./neoburie/neoburie-pixel-walk-v3.png")',backgroundSize:"1000% 100%",backgroundRepeat:"no-repeat"}} />
+            <a className="outline-button" href="./neoburie/neoburie-pixel-walk-v3.png" download="너부리-그림체-참고.png">너부리 그림체 참고 이미지 저장</a>
+            <p className="hint">ChatGPT에 우리 아이 사진과 이 참고 이미지를 함께 첨부해주세요. 너부리는 그림체만 참고하며, 새 시트의 칸 배치는 프롬프트를 따라요.</p>
             <h2>③ ChatGPT에서 동작 시트 만들기</h2>
             <p>
               프롬프트를 복사하고 ChatGPT를 연 뒤,{" "}
@@ -404,7 +368,7 @@ export default function App({ initial = EMPTY }) {
               주세요.
             </p>
             <p className="hint">
-              걷기·대기·수면·식사·들기·착지가 포함된 4×4 시트 한 장을 만들어요.
+              기본 동작은 걷기·대기/눈 깜빡임·수면·반겨주기예요. 드래그용 들기·착지까지 포함한 4×4 시트 한 장을 만들어요.
               사진은 자동 전송되지 않으며 ChatGPT 이용 한도가 적용돼요. 가능한
               최대 해상도로 요청하지만 실제 출력 크기는 생성 서비스에 따라
               달라요.
@@ -433,7 +397,7 @@ export default function App({ initial = EMPTY }) {
                 ChatGPT 열기
               </button>
             </div>
-            <button onClick={downloadTemplate}>
+            <button onClick={() => downloadTemplate(sheetFormat)}>
               4×4 배치 참고 이미지 저장
             </button>
             <p className="hint">
@@ -489,6 +453,7 @@ export default function App({ initial = EMPTY }) {
             {sheetDraft && (
               <SheetReview
                 draft={sheetDraft}
+                sheetFormat={sheetFormat}
                 key={String(autoSplit) + sheetDraft.cells[0].image}
                 onCancel={() => setSheetDraft(null)}
                 onSave={importSheet}
@@ -701,7 +666,8 @@ export default function App({ initial = EMPTY }) {
                   {artwork?.hasMotion ? (
                     <PetPreview
                       id={selected}
-                      liftEnabled={artwork.sheetFormat === "lift-v2"}
+                      liftEnabled={["lift-v2", "companion-v1"].includes(artwork.sheetFormat)}
+                      greetingEnabled={artwork.sheetFormat === "companion-v1"}
                     />
                   ) : view ? (
                     <img

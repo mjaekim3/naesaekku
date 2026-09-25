@@ -12,6 +12,7 @@
     "studio": "electron . --studio",
     "dev": "vite --host 127.0.0.1",
     "test": "vitest run",
+    "test:desktop": "npm run build && node scripts/smoke-desktop.mjs",
     "test:coverage": "vitest run --coverage",
     "preview": "node server/preview.mjs",
     "dist": "npm run build && electron-builder --config electron-builder.config.cjs --win nsis --x64 --publish never",

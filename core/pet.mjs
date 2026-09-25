@@ -32,8 +32,10 @@ export class PetModel {
     roaming = true,
     random = Math.random,
     liftEnabled = false,
+    greetingEnabled = false,
   }) {
     this.liftEnabled = liftEnabled;
+    this.greetingEnabled = greetingEnabled;
     this.sway = 0;
     this.displays = displays;
     this.random = random;
@@ -65,7 +67,7 @@ export class PetModel {
     if (this.state === "drag") return;
     if (action === "sleep") this.setState("sleep");
     if (action === "wake") this.setState("idle", 5000);
-    if (action === "eat") this.setState("eat", 4000);
+    if (action === "eat" && !this.greetingEnabled) this.setState("eat", 4000);
     if (action === "pet") this.setState("happy", 2200);
     if (action === "lift" && this.liftEnabled) this.setState("held");
     if (action === "land" && this.liftEnabled) this.setState("landing", 450);
@@ -149,7 +151,7 @@ export class PetModel {
     if (this.state === "sleep")
       return 6 + (Math.floor(this.elapsed / 1200) % 2);
     if (this.state === "eat") return 8 + (Math.floor(this.elapsed / 300) % 2);
-    if (this.state === "happy") return 5;
+    if (this.state === "happy") return this.greetingEnabled ? 8 + (Math.floor(this.elapsed / 300) % 2) : 5;
     return this.elapsed % 4200 > 4000 ? 5 : 4;
   }
   view() {

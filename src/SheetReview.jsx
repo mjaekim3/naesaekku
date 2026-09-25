@@ -56,7 +56,10 @@ export async function assembleCells(cells) {
   if (!blob) throw Error("시트를 저장하지 못했어요.");
   return new File([blob], "corrected-sheet.png", { type: "image/png" });
 }
-export function downloadTemplate() {
+export function cellNames(format) {
+  return CELL_NAMES.map((name, i) => format === "companion-v1" && (i === 12 || i === 13) ? `반겨주기 ${i - 11}` : name);
+}
+export function downloadTemplate(format) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 1024;
   const ctx = canvas.getContext("2d");
@@ -65,13 +68,16 @@ export function downloadTemplate() {
   ctx.strokeStyle = "#82927a";
   ctx.font = "18px sans-serif";
   ctx.fillStyle = "#34412f";
-  CELL_NAMES.forEach((name, i) => {
+  cellNames(format).forEach((name, i) => {
     const x = (i % 4) * 256,
       y = Math.floor(i / 4) * 256;
     ctx.strokeRect(x + 1, y + 1, 254, 254);
     ctx.fillText(`${i + 1}. ${name}`, x + 14, y + 28);
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(x + 38, y + (i === 14 ? 64 : 45), 180, i === 14 ? 153 : 180);
+    // The upright lifted pose keeps the idle body size, so its box is
+    // narrower and taller than the others instead of smaller.
+    if (i === 14) ctx.strokeRect(x + 58, y + 20, 140, 216);
+    else ctx.strokeRect(x + 38, y + 45, 180, 180);
     ctx.setLineDash([]);
   });
   const a = document.createElement("a");
@@ -79,7 +85,8 @@ export function downloadTemplate() {
   a.href = canvas.toDataURL();
   a.click();
 }
-export default function SheetReview({ draft, onCancel, onSave }) {
+export default function SheetReview({ draft, onCancel, onSave, sheetFormat }) {
+  const names = cellNames(sheetFormat);
   const [cells, setCells] = useState(draft.cells),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -160,9 +167,9 @@ export default function SheetReview({ draft, onCancel, onSave }) {
         {cells.map((cell, i) => (
           <article key={i}>
             <strong>
-              {i + 1}. {CELL_NAMES[i]}
+              {i + 1}. {names[i]}
             </strong>
-            <img src={cell.image} alt={`${CELL_NAMES[i]} 보정 결과`} />
+            <img src={cell.image} alt={`${names[i]} 보정 결과`} />
             {cell.warnings.map((w) => (
               <p className="cell-warning" key={w}>
                 {reasons[w]}
@@ -240,7 +247,7 @@ export default function SheetReview({ draft, onCancel, onSave }) {
                   setChecked(false);
                 }}
               >
-                {CELL_NAMES.map((n, j) => (
+                {names.map((n, j) => (
                   <option key={j} value={j}>
                     {j + 1}. {n}
                   </option>

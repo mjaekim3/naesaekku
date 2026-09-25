@@ -97,7 +97,7 @@ test("new styles request high resolution and a smaller fully visible lift pose",
     expect(prompt).toContain("25%");
     expect(prompt).toContain("ear tips");
     expect(prompt).toContain(
-      style === "cartoon" ? "만화 캐릭터" : "실제와 비슷",
+      "기본 너부리",
     );
   }
 });

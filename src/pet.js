@@ -17,7 +17,14 @@ const frames = await Promise.all(
       }),
   ),
 );
-ctx.imageSmoothingEnabled = false;
+// Frames are stored larger than the 192 px they occupy on screen: render the
+// canvas at the display's pixel ratio and filter smoothly when scaling down.
+const dpr = Math.max(1, window.devicePixelRatio || 1);
+canvas.width = Math.round(220 * dpr);
+canvas.height = Math.round(230 * dpr);
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = "high";
 let view = { state: "idle", frame: 4, mirrored: false },
   bubbleTimer,
   pressed = false;

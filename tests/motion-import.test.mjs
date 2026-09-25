@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { splitMotion, motionGroupPrompt } from "../core/motion-import.mjs";
+import { FRAME_SIZE, BASELINE } from "../core/frame-size.mjs";
 import { Studio } from "../core/studio.mjs";
 async function sheet(columns, rows) {
   const marker = await sharp({
@@ -69,25 +70,26 @@ test("moving tail does not shift the torso horizontally and magenta removal pres
   for (const f of frames) {
     const raw = await sharp(f).raw().toBuffer();
     const xs = [];
-    for (let y = 0; y < 192; y++)
-      for (let x = 0; x < 192; x++) {
-        const n = (y * 192 + x) * 4;
+    for (let y = 0; y < FRAME_SIZE; y++)
+      for (let x = 0; x < FRAME_SIZE; x++) {
+        const n = (y * FRAME_SIZE + x) * 4;
         if (raw[n] > 250 && raw[n + 1] > 250 && raw[n + 2] > 250 && raw[n + 3])
           xs.push(x);
       }
     expect(xs.length).toBeGreaterThan(0);
     center.push(xs.reduce((a, b) => a + b) / xs.length);
   }
-  expect(center[0]).toBe(center[1]);
+  // Smooth resampling may move the centroid by a fraction of a pixel.
+  expect(Math.abs(center[0] - center[1])).toBeLessThan(0.5);
 });
 test("separate sheets split with stable canvas and baseline, and reject bad layouts", async () => {
   const frames = await splitMotion(await sheet(4, 2), "walk", "alpha");
   expect(frames).toHaveLength(8);
   const raw = await sharp(frames[0]).ensureAlpha().raw().toBuffer();
   const ys = [];
-  for (let y = 0; y < 192; y++)
-    for (let x = 0; x < 192; x++) if (raw[(y * 192 + x) * 4 + 3]) ys.push(y);
-  expect(Math.max(...ys)).toBe(183);
+  for (let y = 0; y < FRAME_SIZE; y++)
+    for (let x = 0; x < FRAME_SIZE; x++) if (raw[(y * FRAME_SIZE + x) * 4 + 3]) ys.push(y);
+  expect(ys.reduce((a, y) => Math.max(a, y), 0)).toBe(BASELINE - 1);
   await expect(
     splitMotion(await sheet(2, 1), "walk", "alpha"),
   ).rejects.toThrow();

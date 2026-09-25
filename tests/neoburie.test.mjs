@@ -96,6 +96,18 @@ describe("desktop overlay wiring", () => {
     }
   });
 
+  it("runs registered pets in the overlay at display frame rate with instant frame switches", async () => {
+    const main = await readFile(new URL("../desktop/pet-main.cjs", import.meta.url), "utf8");
+    expect(main).toContain('"app://pet/companion.html"');
+    expect(main).toContain("const overlayWanted = () => !smoke;");
+    const page = await readFile(new URL("../src/companion.js", import.meta.url), "utf8");
+    expect(page).toContain("requestAnimationFrame(frame)");
+    expect(page).toContain("api.hover(over)");
+    // Cross-fades made small size differences between frames look like a
+    // double outline, so frames are never blended.
+    expect(page).not.toMatch(/globalAlpha|SOFT_PAIRS/);
+  });
+
   it("ships every sprite sheet the renderer loads", async () => {
     const sources = await Promise.all(["main.js", "face.js", "care.js"].map((f) => readFile(new URL(`../src/neoburie/${f}`, import.meta.url), "utf8")));
     const sheets = new Set(sources.join("\n").match(/neoburie-[\w-]+\.png/g));
